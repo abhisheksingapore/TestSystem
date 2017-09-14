@@ -1,8 +1,11 @@
 package me.veganbuddy.veganbuddy.util;
 
+import java.text.DateFormat;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Locale;
 
 import me.veganbuddy.veganbuddy.R;
 
@@ -60,11 +63,11 @@ public class DateAndTimeUtils {
     }
 
     public static String dateTimeStamp(){
-        return new SimpleDateFormat("yyyyMMMdd_HHmmss").format(new Date());
+        return new SimpleDateFormat("yyyyMMMdd_HHmmss", Locale.ENGLISH).format(new Date());
     }
 
     public static String dateStamp(){
-        return new SimpleDateFormat("yyyyMMMdd").format(new Date());
+        return new SimpleDateFormat("yyyyMMMdd", Locale.ENGLISH).format(new Date());
     }
 
     public static int thisWeek(){
@@ -78,4 +81,44 @@ public class DateAndTimeUtils {
     public static int thisYear () {
         return rightNow.get(Calendar.YEAR);
     }
+
+    public static String timeDifference(String receivedDate) {
+        SimpleDateFormat format = new SimpleDateFormat("yyyyMMMdd_HHmmss", Locale.ENGLISH);
+        String timeAndDaysDifference = "";
+        try {
+            String todaysDate = dateTimeStamp();
+            Date d1 = format.parse(receivedDate);
+            Date d2 = format.parse(todaysDate);
+
+            long diff = d2.getTime() - d1.getTime();
+
+            long diffSeconds = diff / 1000 % 60;
+            long diffMinutes = diff / (60 * 1000) % 60;
+            long diffHours = diff / (60 * 60 * 1000) % 24;
+            long diffDays = diff / (24 * 60 * 60 * 1000);
+
+            if (diffDays > 30) {
+                timeAndDaysDifference = "More than 1 month ago";
+            } else if (diffDays > 0) {
+                if (diffDays > 1) {
+                    int diffDaysInt = (int) diffDays;
+                    timeAndDaysDifference = Integer.toString(diffDaysInt) + " days ago";
+                } else timeAndDaysDifference = "1 day ago";
+            } else if (diffHours > 0) {
+                if (diffHours > 1) {
+                    int diffHoursInt = (int) diffHours;
+                    timeAndDaysDifference = Integer.toString(diffHoursInt) + " hours ago";
+                } else timeAndDaysDifference = "1 hour ago";
+            } else if (diffMinutes > 1) {
+                int diffMinutesInt = (int) diffMinutes;
+                timeAndDaysDifference = Integer.toString(diffMinutesInt) + " mins ago";
+            } else {
+                timeAndDaysDifference = "Moments ago";
+            }
+        } catch (ParseException PE){
+            PE.printStackTrace();
+        }
+        return timeAndDaysDifference;
+    }
+
 }

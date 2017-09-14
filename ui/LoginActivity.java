@@ -1,10 +1,12 @@
 package me.veganbuddy.veganbuddy.ui;
 
+import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
 import android.widget.ProgressBar;
@@ -43,6 +45,7 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
     private static ProgressBar signInProgressBar;
     private static SignInButton signInButton;
     private static FirebaseUser currentUser;
+    private static Context thisContext;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,6 +64,7 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
         super.onStart();
         showProgressBarAndBackgroundImage();
         prepareFirebaseAuthComponents();
+        thisContext = this;
         new CheckUserLoginAndRetrieveDataFromFirebase().execute();
     }
 
@@ -195,6 +199,7 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
         @Override
         protected Void doInBackground(Void... voids) {
             if (currentUser!=null) {
+                FirebaseStorageUtils.retrievePostsData();
                 FirebaseStorageUtils.setUserMealDataForToday();
                 while (User.waitingForData) { }; //Todo explore if there is a better way to attach a listener
             }

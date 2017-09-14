@@ -122,7 +122,6 @@ public class Dashboard {
     }
 
     public String getStartDateOfVegan() {
-        User.startDateForVeganism = startDateOfVegan;
         return startDateOfVegan;
     }
 

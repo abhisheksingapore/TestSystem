@@ -16,7 +16,7 @@ import java.util.Map;
 public class User {
     public static FirebaseUser thisAppUser;
     public static int mealsForToday;
-    public static String startDateForVeganism;
+    public static String startDateForVeganism = "start";
     public static boolean waitingForData = true;
 
     private Map <String, Object> profile = new HashMap<>();

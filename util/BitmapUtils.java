@@ -20,7 +20,12 @@ public class BitmapUtils {
 
     public static final String FILE_PROVIDER_AUTHORITY = "me.veganbuddy.veganbuddy.fileprovider";
     public static String photoURL;
-    public static String photoUri;
+    public static Uri photoUri;
+    public static String photoPath;
+
+    public static String imageFileName;
+
+    public static String photoThumbnailURL;
     public static String photoThumbnailPath;
     public static Uri photoThumbnailUri;
 
@@ -32,12 +37,36 @@ public class BitmapUtils {
         photoURL = mURL;
     }
 
-    public static String getPhotoUri() {
+    public static String getPhotoThumbnailURL() {
+        return photoThumbnailURL;
+    }
+
+    public static void setPhotoThumbnailURL(String photoThumbnailURL) {
+        BitmapUtils.photoThumbnailURL = photoThumbnailURL;
+    }
+
+    public static String getPhotoPath() {
+        return photoPath;
+    }
+
+    public static void setPhotoPath(String photoPath) {
+        BitmapUtils.photoPath = photoPath;
+    }
+
+    public static Uri getPhotoUri() {
         return photoUri;
     }
 
-    public static void setPhotoUri(String mUri) {
+    public static void setPhotoUri(Uri mUri) {
         photoUri = mUri;
+    }
+
+    public static String getImageFileName() {
+        return imageFileName;
+    }
+
+    public static void setImageFileName(String imageFileName) {
+        BitmapUtils.imageFileName = imageFileName;
     }
 
     public static File createThumbnail (String filePath, File fileDirectory) {

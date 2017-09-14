@@ -35,10 +35,12 @@ import static me.veganbuddy.veganbuddy.util.DateAndTimeUtils.dateTimeStamp;
 
 public class MealPreviewPhoto extends AppCompatActivity {
 
-    private String previewImagePath;
     private static String veganPhilosophyText;
-    private String imageFileName;
+    private Uri thumbnailImageURI;
+
     private Uri imageURI;
+    private String imageFileName;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,7 +56,7 @@ public class MealPreviewPhoto extends AppCompatActivity {
                 User.mealsForToday = User.mealsForToday + 1;
                 reloadDashBoard();
                 UploadPhotoAndDashboardData uploadPhotoAndDashboardData
-                        = new UploadPhotoAndDashboardData(imageURI, imageFileName);
+                        = new UploadPhotoAndDashboardData(imageURI, thumbnailImageURI, imageFileName);
                 uploadPhotoAndDashboardData.execute();
             }
         });
@@ -65,9 +67,12 @@ public class MealPreviewPhoto extends AppCompatActivity {
         super.onStart();
         Bundle extras = getIntent().getExtras();
         veganPhilosophyText = extras.getString("VeganPhilosophy");
-        imageURI = BitmapUtils.photoThumbnailUri;
+        thumbnailImageURI = BitmapUtils.photoThumbnailUri;
+        imageURI = BitmapUtils.getPhotoUri();
+        imageFileName = BitmapUtils.getImageFileName();
+
         ImageView imageView = (ImageView) findViewById(R.id.iv_preview_food_image);
-        Picasso.with(this).load(imageURI).into(imageView);
+        Picasso.with(this).load(thumbnailImageURI).into(imageView);
         TextView textView = (TextView) findViewById(R.id.tv_preview_comments);
         textView.setText(veganPhilosophyText);
     }
@@ -79,13 +84,15 @@ public class MealPreviewPhoto extends AppCompatActivity {
 
     class UploadPhotoAndDashboardData extends AsyncTask <Void, Void, Void> {
         private String imageFileName;
-        private Uri imageURI;
+        private Uri fullImageURI;
+        private Uri thumnailUri;
         private StorageReference mStorageRef;
 
         //Todo: also upload the thumbnail for the Placards Display
 
-        UploadPhotoAndDashboardData( Uri path, String name) {
-            imageURI = path;
+        UploadPhotoAndDashboardData( Uri path, Uri thumb, String name) {
+            fullImageURI = path;
+            thumnailUri = thumb;
             imageFileName = name;
             mStorageRef = FirebaseStorage.getInstance().getReference();
         }
@@ -109,13 +116,33 @@ public class MealPreviewPhoto extends AppCompatActivity {
 
         private void uploadPhotoToCloudStorage() {
             StorageReference photoReference = mStorageRef.child(uniqueImagePath());
-            photoReference.putFile(imageURI)
+            StorageReference thumbnailReference = mStorageRef.child(uniqueThumbnailPath());
+
+            //Uploading Thumbnail before full size photo as thumbnail upload will be faster
+            UploadTask thumbnailUpload = thumbnailReference.putFile(thumnailUri);
+            UploadTask photoUpload = photoReference.putFile(fullImageURI);
+
+            thumbnailUpload
+                    .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                @Override
+                public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                    BitmapUtils.setPhotoThumbnailURL(taskSnapshot.getDownloadUrl().toString());
+                }
+            })
+                    .addOnFailureListener(new OnFailureListener() {
+                        @Override
+                        public void onFailure(@NonNull Exception e) {
+                            Toast.makeText(MealPreviewPhoto.this, "Photo Upload Failed!", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+
+            photoUpload
                     .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
                         @Override
                         public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
                             Toast.makeText(MealPreviewPhoto.this, "Photo Upload Successful!", Toast.LENGTH_SHORT).show();
-                            BitmapUtils.setPhotoURL (taskSnapshot.getDownloadUrl().toString());
-                            uploadDataToCloudDatabase(); //Including the comments, the meal type, the path etc.
+                            BitmapUtils.setPhotoURL(taskSnapshot.getDownloadUrl().toString());
+                            uploadDataToCloudDatabase(); //Including the comments, the meal type, the path for fullSizeImage, etc.
                         }
                     })
                     .addOnFailureListener(new OnFailureListener() {
@@ -129,13 +156,18 @@ public class MealPreviewPhoto extends AppCompatActivity {
         private void uploadDataToCloudDatabase() {
             FirebaseUser thisUser = User.thisAppUser;
             FirebaseStorageUtils.addNodesToDatabase(thisUser.getEmail(), thisUser, 1,
-                    BitmapUtils.getPhotoURL(), veganPhilosophyText);
+                    BitmapUtils.getPhotoURL(), BitmapUtils.getPhotoThumbnailURL(), veganPhilosophyText);
         }
 
          private String uniqueImagePath() {
             String path = User.thisAppUser.getEmail().toString()+ "/fullSize/" + imageFileName;
             return path;
          }
+
+        private String uniqueThumbnailPath() {
+            String path = User.thisAppUser.getEmail().toString()+ "/thumbnail/" + imageFileName;
+            return path;
+        }
     }
 
 

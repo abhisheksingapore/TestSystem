@@ -51,10 +51,13 @@ public class MealPhoto extends AppCompatActivity {
         super.onStart();
         Bundle extras = getIntent().getExtras();
         mealPhotoPath = extras.getString("PhotoFilePath");
+
+        //Create a thumbnail of the received photo
         File photoThumbnail = BitmapUtils.createThumbnail
                 (mealPhotoPath, getExternalFilesDir(Environment.DIRECTORY_PICTURES));
         Uri photoThumbnailUri = Uri.fromFile(photoThumbnail);
         BitmapUtils.photoThumbnailUri = photoThumbnailUri;
+
         mealImageView = (ImageView) findViewById(R.id.image_food);
         Picasso.with(this).load(photoThumbnailUri).into(mealImageView);
     }

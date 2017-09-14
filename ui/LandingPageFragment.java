@@ -7,15 +7,29 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.res.ResourcesCompat;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.Spinner;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.google.firebase.database.DataSnapshot;
+import com.jackandphantom.circularprogressbar.CircleProgressbar;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import me.veganbuddy.veganbuddy.R;
+import me.veganbuddy.veganbuddy.actors.Post;
 import me.veganbuddy.veganbuddy.actors.User;
+import me.veganbuddy.veganbuddy.util.FirebaseStorageUtils;
 import me.veganbuddy.veganbuddy.util.MeatMathUtils;
 
+import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.postList;
 import static me.veganbuddy.veganbuddy.util.MeatMathUtils.GREEN_COLOR;
 import static me.veganbuddy.veganbuddy.util.MeatMathUtils.RED_COLOR;
 import static me.veganbuddy.veganbuddy.util.MeatMathUtils.YELLOW_COLOR;
@@ -45,6 +59,8 @@ public class LandingPageFragment extends Fragment {
     // TODO: Rename and change types of parameters
     private int mParam1;
 
+
+    public static PlacardsRecyclerViewAdapter placardsRecyclerViewAdapter;
 
     private OnFragmentInteractionListener mListener;
 
@@ -79,12 +95,15 @@ public class LandingPageFragment extends Fragment {
             break;
             case VEGAN_DASHBOARD_LAYOUT: resourceID = R.layout.fragment_dashboard_vegan_percentage;
             break;
+            case PLACARD_LAYOUT: resourceID = R.layout.placard_item;
+            break;
+            case MY_PLACARD_LAYOUT: resourceID = R.layout.fragment_placard;
+            break;
             default:resourceID = R.layout.fragment_landing_page;
             break;
         }
         return inflater.inflate(resourceID, container, false);
     }
-
 
     @Override
     public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
@@ -95,6 +114,57 @@ public class LandingPageFragment extends Fragment {
             MeatMathUtils.getDashboardAnimalColor(User.mealsForToday, MeatMathUtils.IN_ONE_DAY);
             loadDashboardAnimals(view, MeatMathUtils.DASHBOARD_ANIMAL_COLOR);
         }
+
+        if (mParam1 == VEGAN_DASHBOARD_LAYOUT) {
+            loadVeganDashBoardData (view);
+        }
+
+        if (mParam1 == PLACARD_LAYOUT) {
+            loadFriendsPlacardView (view);
+        }
+
+        if (mParam1 == MY_PLACARD_LAYOUT) {
+            loadMyPlacardView (view);
+        }
+    }
+
+    private void loadFriendsPlacardView(View view) {
+
+        //yet to be defined
+
+
+    }
+
+    private void loadMyPlacardView(View view){
+        RecyclerView placardsRecyclerView = (RecyclerView)view.findViewById(R.id.fp_placards_recyclerView);
+
+        LinearLayoutManager postsLayoutManager = new LinearLayoutManager(getActivity());
+        placardsRecyclerView.setHasFixedSize(true);
+        placardsRecyclerView.setLayoutManager(postsLayoutManager);
+
+        placardsRecyclerViewAdapter = new PlacardsRecyclerViewAdapter(postList, view.getContext());
+        placardsRecyclerView.setAdapter(placardsRecyclerViewAdapter);
+    }
+
+    private void loadVeganDashBoardData(View view) {
+        TextView startDate = (TextView) view.findViewById(R.id.fdvp_start_Date);
+        TextView veganMeals = (TextView) view.findViewById(R.id.fdvp_vegan_meals);
+        TextView potentialMeals = (TextView) view.findViewById(R.id.fdvp_potential_meals);
+        TextView percentVeganText = (TextView) view.findViewById(R.id.fdvp_percent_complete);
+        CircleProgressbar circleProgressbar = (CircleProgressbar) view.findViewById(R.id.fdvp_graph_progressBar);
+        Spinner spinnerDuration = (Spinner) view.findViewById(R.id.fdvp_spinner1);
+        Spinner spinnerWho = (Spinner) view.findViewById(R.id.fdvp_spinner2);
+        String filter1 = spinnerDuration.getSelectedItem().toString();
+        String filter2 = spinnerWho.getSelectedItem().toString();
+
+        MeatMathUtils.setFiltersAndCalculate(getContext(),filter1, filter2);
+
+        startDate.setText(User.startDateForVeganism);
+        veganMeals.setText(MeatMathUtils.getNumberofVeganMealsLogged());
+        potentialMeals.setText(MeatMathUtils.getTotalMealsLogged());
+        percentVeganText.setText(MeatMathUtils.percentVeganString());
+        circleProgressbar.setProgress(MeatMathUtils.percentVeganFloat());
+
     }
 
     private void loadDashboardAnimals(View view, String animalsColor) {

@@ -15,6 +15,8 @@ import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.content.FileProvider;
 import android.support.v4.view.ViewPager;
+import android.support.v7.widget.CardView;
+import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -27,33 +29,40 @@ import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
 import com.squareup.picasso.Picasso;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 import javax.security.auth.login.LoginException;
 
 import me.veganbuddy.veganbuddy.R;
 import me.veganbuddy.veganbuddy.actors.Dashboard;
+import me.veganbuddy.veganbuddy.actors.Post;
 import me.veganbuddy.veganbuddy.util.BitmapUtils;
 import me.veganbuddy.veganbuddy.util.DateAndTimeUtils;
 import me.veganbuddy.veganbuddy.actors.User;
 import me.veganbuddy.veganbuddy.util.FirebaseStorageUtils;
-import me.veganbuddy.veganbuddy.util.MeatMathUtils;
 
-import static me.veganbuddy.veganbuddy.util.MeatMathUtils.GREEN_COLOR;
-import static me.veganbuddy.veganbuddy.util.MeatMathUtils.RED_COLOR;
-import static me.veganbuddy.veganbuddy.util.MeatMathUtils.YELLOW_COLOR;
+import static me.veganbuddy.veganbuddy.ui.LandingPageFragment.placardsRecyclerViewAdapter;
+import static me.veganbuddy.veganbuddy.ui.PlacardsRecyclerViewAdapter.HEART_EMPTY;
+import static me.veganbuddy.veganbuddy.ui.PlacardsRecyclerViewAdapter.HEART_FULL;
+import static me.veganbuddy.veganbuddy.ui.PlacardsRecyclerViewAdapter.NO_LIKES;
+import static me.veganbuddy.veganbuddy.ui.PlacardsRecyclerViewAdapter.ONE_LIKE;
 
 public class LandingPage extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener,
@@ -113,7 +122,7 @@ public class LandingPage extends AppCompatActivity
         if (drawer.isDrawerOpen(GravityCompat.START)) {
             drawer.closeDrawer(GravityCompat.START);
         } else {
-            super.onBackPressed();
+            Toast.makeText(this, "Back Button Pressed but nothing to go back to", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -219,6 +228,7 @@ public class LandingPage extends AppCompatActivity
         File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
         photoFile = File.createTempFile(photoFileName, ".jpg", storageDir);
         mCurrentPhotoPath = photoFile.getAbsolutePath();
+        BitmapUtils.setImageFileName(photoFile.getName());
         return photoFile;
     }
 
@@ -244,6 +254,12 @@ public class LandingPage extends AppCompatActivity
         Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
         File file = new File(mCurrentPhotoPath);
         Uri uri = Uri.fromFile(file);
+
+        //Save path and Uri for the full Size photo on the phone
+        BitmapUtils.setPhotoUri(uri);
+        BitmapUtils.setPhotoPath(mCurrentPhotoPath);
+
+        //Add to gallery
         mediaScanIntent.setData(uri);
         this.sendBroadcast(mediaScanIntent);
     }
@@ -272,45 +288,64 @@ public class LandingPage extends AppCompatActivity
         Toast.makeText(this, "Testing Context", Toast.LENGTH_SHORT).show();
     }
 
+    public void heartClick(View view) {
+        ImageView heart = (ImageView) view.findViewById(R.id.pi_heart_icon);
+        String heartStatus = heart.getContentDescription().toString();
+        boolean newValue = false;
+        int newLikeCount = 0;
+        int currentLikeCount = 0;
+        LinearLayout viewParent = (LinearLayout) view.getParent();
+        CardView viewGrandParent = (CardView) viewParent.getParent().getParent();
 
-    /***
-     *
-     * Private classes of Sections and Fragments
-     *
-     */
+        TextView commentsView = (TextView) viewGrandParent.findViewById(R.id.pi_likes_count);
 
-    /**
-     * A placeholder fragment containing a simple view.
-     */
-    /*public static class PlaceholderFragment extends Fragment {
-        *//**
-         * The fragment argument representing the section number for this
-         * fragment.
-         *//*
-        private static final String ARG_SECTION_NUMBER = "section_number";
-
-        public PlaceholderFragment() {
+        String nodeID = viewGrandParent.getContentDescription().toString();
+        String numberofComments = commentsView.getText().toString();
+        switch (numberofComments) {
+            case NO_LIKES: currentLikeCount = 0;
+            break;
+            case ONE_LIKE: currentLikeCount = 1;
+            break;
+            default: currentLikeCount = getLikeCount (numberofComments);
+            break;
         }
 
-        *//**
-         * Returns a new instance of this fragment for the given section
-         * number.
-         *//*
-        public static PlaceholderFragment newInstance(int sectionNumber) {
-            PlaceholderFragment fragment = new PlaceholderFragment();
-            Bundle args = new Bundle();
-            args.putInt(ARG_SECTION_NUMBER, sectionNumber);
-            fragment.setArguments(args);
-            return fragment;
+        if (heartStatus == HEART_FULL) {
+            //implies that currentValue of boolean "iLike" is true;
+            newValue = false;
+            newLikeCount = currentLikeCount - 1; //Reduce like by 1
         }
 
-        @Override
-        public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                                 Bundle savedInstanceState) {
-            View rootView = inflater.inflate(R.layout.content_landing_page, container, false);
-            return rootView;
+        if (heartStatus == HEART_EMPTY) {
+            //implies that currentValue of boolean "iLike" is false;
+            newValue = true;
+            newLikeCount = currentLikeCount + 1; //Increase like by 1
         }
+        FirebaseStorageUtils.updateIlike (nodeID, newValue, newLikeCount);
+    }
+
+    /*private void refreshData() {
+        DataSnapshot dataSnapshot = FirebaseStorageUtils.postDataSnapshot;
+        List<Post> postList = new ArrayList<>();
+
+        for (DataSnapshot singleSnapShot: dataSnapshot.getChildren()) {
+            Post thisPost = singleSnapShot.getValue(Post.class);
+            postList.add(thisPost);
+        }
+
+
     }*/
+
+    private int getLikeCount(String numberofComments) {
+        if (numberofComments !=null && numberofComments !=""){
+            String theDigits = numberofComments.replaceAll("\\D+","");
+            return Integer.parseInt(theDigits);
+        } else return 0;
+    }
+
+    public void commentsClick(View view) {
+        Toast.makeText(this, "Testing Comments", Toast.LENGTH_SHORT).show();
+    }
 
     /**
      * A {@link FragmentPagerAdapter} that returns a fragment corresponding to
@@ -325,7 +360,6 @@ public class LandingPage extends AppCompatActivity
         @Override
         public Fragment getItem(int position) {
             // getItem is called to instantiate the fragment for the given page.
-            // Return a PlaceholderFragment (defined as a static inner class below).
 
             return LandingPageFragment.newInstance(position);
         }

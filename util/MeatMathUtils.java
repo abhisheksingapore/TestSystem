@@ -1,5 +1,10 @@
 package me.veganbuddy.veganbuddy.util;
 
+import android.content.Context;
+
+import me.veganbuddy.veganbuddy.R;
+import me.veganbuddy.veganbuddy.actors.User;
+
 /**
  * Created by abhishek on 29/8/17.
  */
@@ -39,6 +44,11 @@ public class MeatMathUtils {
     public static int IN_ONE_MONTH = 2;
     public static int IN_ONE_YEAR = 3;
 
+    //Variables related to the "How Vegan?" Dashboard
+    public static double totalPotentialNumberOfMeals;
+    public static double veganMealsForDuration;
+    public static double percentVegan = 0.00;
+
     public MeatMathUtils () {
 
     }
@@ -60,4 +70,38 @@ public class MeatMathUtils {
         return lower <= x && x < upper;
     }
 
+    public static void setFiltersAndCalculate(Context context, String actor, String duration) {
+        if (actor.equals(context.getString(R.string.filter1_default_selection))) {
+            if (duration.equals(context.getString(R.string.filter2_default_selection))) {
+                totalPotentialNumberOfMeals = NUMBER_OF_MEALS_PER_DAY;
+                veganMealsForDuration = (double)User.mealsForToday;
+                calculatePercentage();
+            }
+        }
+    }
+
+    public static String getNumberofVeganMealsLogged() {
+        return Double.toString(veganMealsForDuration);
+    }
+
+    public static String getTotalMealsLogged() {
+        return Double.toString(totalPotentialNumberOfMeals);
+        //Todo: It is possible for someone to log more than 3 meals a day as Vegan. Must handle....
+    }
+
+    public static String percentVeganString() {
+        return (String.format("%.1f",percentVegan) + "%");
+    }
+
+    public static float percentVeganFloat() {
+        return ((float)percentVegan);
+    }
+
+    private static void calculatePercentage(){
+        percentVegan = (veganMealsForDuration/totalPotentialNumberOfMeals) * 100;
+        if (percentVegan > 100) {
+            //In case meals logged as vegan are greater than the "totalPotentialNumberOfMeals" for the duration
+            percentVegan =100;
+        }
+    }
 }
