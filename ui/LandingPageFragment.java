@@ -6,9 +6,10 @@ import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
-import android.support.v4.content.res.ResourcesCompat;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -18,18 +19,23 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.storage.StorageReference;
 import com.jackandphantom.circularprogressbar.CircleProgressbar;
 
-import java.util.ArrayList;
-import java.util.List;
 
 import me.veganbuddy.veganbuddy.R;
-import me.veganbuddy.veganbuddy.actors.Post;
-import me.veganbuddy.veganbuddy.actors.User;
-import me.veganbuddy.veganbuddy.util.FirebaseStorageUtils;
+import me.veganbuddy.veganbuddy.actors.Dashboard;
 import me.veganbuddy.veganbuddy.util.MeatMathUtils;
 
+import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.allUsersPostsList;
 import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.postList;
+import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.userFirebaseIDs;
+import static me.veganbuddy.veganbuddy.util.GlobalVariables.myDashboard;
+import static me.veganbuddy.veganbuddy.util.GlobalVariables.thisAppUser;
 import static me.veganbuddy.veganbuddy.util.MeatMathUtils.GREEN_COLOR;
 import static me.veganbuddy.veganbuddy.util.MeatMathUtils.RED_COLOR;
 import static me.veganbuddy.veganbuddy.util.MeatMathUtils.YELLOW_COLOR;
@@ -43,10 +49,10 @@ import static me.veganbuddy.veganbuddy.util.MeatMathUtils.YELLOW_COLOR;
  * create an instance of this fragment.
  */
 public class LandingPageFragment extends Fragment {
+
     // TODO: Rename parameter arguments, choose names that match
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
     private static final String ARG_PARAM1 = "param1";
-
 
     //Static variables to decide which Fragment Layout is to be loaded
     private static final int ANIMALS_DASHBOARD_LAYOUT = 0;
@@ -54,13 +60,12 @@ public class LandingPageFragment extends Fragment {
     private static final int PLACARD_LAYOUT = 2;
     private static final int MY_PLACARD_LAYOUT = 3;
 
-
-
     // TODO: Rename and change types of parameters
     private int mParam1;
 
-
     public static PlacardsRecyclerViewAdapter placardsRecyclerViewAdapter;
+    public static PlacardsRecyclerViewAdapter placardsRecyclerViewAdapterAllPosts;
+
 
     private OnFragmentInteractionListener mListener;
 
@@ -83,6 +88,7 @@ public class LandingPageFragment extends Fragment {
         if (getArguments() != null) {
             mParam1 = getArguments().getInt(ARG_PARAM1);
         }
+
     }
 
     @Override
@@ -95,7 +101,7 @@ public class LandingPageFragment extends Fragment {
             break;
             case VEGAN_DASHBOARD_LAYOUT: resourceID = R.layout.fragment_dashboard_vegan_percentage;
             break;
-            case PLACARD_LAYOUT: resourceID = R.layout.placard_item;
+            case PLACARD_LAYOUT: resourceID = R.layout.fragment_placard;
             break;
             case MY_PLACARD_LAYOUT: resourceID = R.layout.fragment_placard;
             break;
@@ -110,9 +116,7 @@ public class LandingPageFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         if (mParam1 == ANIMALS_DASHBOARD_LAYOUT) {
-            //Default Dashboard is the "Today" Dashboard. Hence passing "IN_ONE_DAY"
-            MeatMathUtils.getDashboardAnimalColor(User.mealsForToday, MeatMathUtils.IN_ONE_DAY);
-            loadDashboardAnimals(view, MeatMathUtils.DASHBOARD_ANIMAL_COLOR);
+            loadDashboardAnimals(view);
         }
 
         if (mParam1 == VEGAN_DASHBOARD_LAYOUT) {
@@ -120,7 +124,7 @@ public class LandingPageFragment extends Fragment {
         }
 
         if (mParam1 == PLACARD_LAYOUT) {
-            loadFriendsPlacardView (view);
+            loadAllPlacardView (view);
         }
 
         if (mParam1 == MY_PLACARD_LAYOUT) {
@@ -128,16 +132,25 @@ public class LandingPageFragment extends Fragment {
         }
     }
 
-    private void loadFriendsPlacardView(View view) {
+    @Override
+    public void onStart() {
+        super.onStart();
+    }
 
-        //yet to be defined
 
+    private void loadAllPlacardView(View view) {
+        RecyclerView placardsAllPostsRecyclerView = view.findViewById(R.id.fp_placards_recyclerView);
+        LinearLayoutManager allPostsLayoutManager = new LinearLayoutManager(getActivity());
+        placardsAllPostsRecyclerView.setHasFixedSize(true);
+        placardsAllPostsRecyclerView.setLayoutManager(allPostsLayoutManager);
 
+        placardsRecyclerViewAdapterAllPosts = new PlacardsRecyclerViewAdapter(allUsersPostsList,
+                userFirebaseIDs, view.getContext());
+        placardsAllPostsRecyclerView.setAdapter(placardsRecyclerViewAdapterAllPosts);
     }
 
     private void loadMyPlacardView(View view){
-        RecyclerView placardsRecyclerView = (RecyclerView)view.findViewById(R.id.fp_placards_recyclerView);
-
+        RecyclerView placardsRecyclerView = view.findViewById(R.id.fp_placards_recyclerView);
         LinearLayoutManager postsLayoutManager = new LinearLayoutManager(getActivity());
         placardsRecyclerView.setHasFixedSize(true);
         placardsRecyclerView.setLayoutManager(postsLayoutManager);
@@ -147,32 +160,37 @@ public class LandingPageFragment extends Fragment {
     }
 
     private void loadVeganDashBoardData(View view) {
-        TextView startDate = (TextView) view.findViewById(R.id.fdvp_start_Date);
-        TextView veganMeals = (TextView) view.findViewById(R.id.fdvp_vegan_meals);
-        TextView potentialMeals = (TextView) view.findViewById(R.id.fdvp_potential_meals);
-        TextView percentVeganText = (TextView) view.findViewById(R.id.fdvp_percent_complete);
-        CircleProgressbar circleProgressbar = (CircleProgressbar) view.findViewById(R.id.fdvp_graph_progressBar);
-        Spinner spinnerDuration = (Spinner) view.findViewById(R.id.fdvp_spinner1);
-        Spinner spinnerWho = (Spinner) view.findViewById(R.id.fdvp_spinner2);
+        TextView startDate = view.findViewById(R.id.fdvp_start_Date);
+        TextView veganMeals = view.findViewById(R.id.fdvp_vegan_meals);
+        TextView potentialMeals = view.findViewById(R.id.fdvp_potential_meals);
+        TextView percentVeganText = view.findViewById(R.id.fdvp_percent_complete);
+        CircleProgressbar circleProgressbar = view.findViewById(R.id.fdvp_graph_progressBar);
+        Spinner spinnerDuration = view.findViewById(R.id.fdvp_spinner1);
+        Spinner spinnerWho = view.findViewById(R.id.fdvp_spinner2);
         String filter1 = spinnerDuration.getSelectedItem().toString();
         String filter2 = spinnerWho.getSelectedItem().toString();
 
         MeatMathUtils.setFiltersAndCalculate(getContext(),filter1, filter2);
 
-        startDate.setText(User.startDateForVeganism);
+        startDate.setText(myDashboard.getStartDateOfVegan());
         veganMeals.setText(MeatMathUtils.getNumberofVeganMealsLogged());
         potentialMeals.setText(MeatMathUtils.getTotalMealsLogged());
         percentVeganText.setText(MeatMathUtils.percentVeganString());
         circleProgressbar.setProgress(MeatMathUtils.percentVeganFloat());
-
     }
 
-    private void loadDashboardAnimals(View view, String animalsColor) {
-        ImageView cow = (ImageView) view.findViewById(R.id.icon_cow);
-        ImageView chicken = (ImageView) view.findViewById(R.id.icon_chicken);
-        ImageView pig = (ImageView) view.findViewById(R.id.icon_pig);
-        ImageView seafood = (ImageView) view.findViewById(R.id.icon_seafood);
+    private void loadDashboardAnimals(View view) {
+
+        ImageView cow = view.findViewById(R.id.icon_cow);
+        ImageView chicken = view.findViewById(R.id.icon_chicken);
+        ImageView pig = view.findViewById(R.id.icon_pig);
+        ImageView seafood = view.findViewById(R.id.icon_seafood);
         Context thisContext = getContext();
+
+        //in case the app arrives here without retrieving the dashboard data
+        if (myDashboard == null) myDashboard = new Dashboard(0);
+        MeatMathUtils.getDashboardAnimalColor(myDashboard.getMealsForToday(), MeatMathUtils.IN_ONE_DAY);
+        String animalsColor = MeatMathUtils.DASHBOARD_ANIMAL_COLOR;
         switch (animalsColor) {
             case RED_COLOR:
                 cow.setImageDrawable(ContextCompat.getDrawable(thisContext,R.drawable.cow_red));
@@ -195,13 +213,6 @@ public class LandingPageFragment extends Fragment {
         }
     }
 
-    // TODO: Rename method, update argument and hook method into UI event
-    public void onButtonPressed(Uri uri) {
-        if (mListener != null) {
-            mListener.onFragmentInteraction(uri);
-        }
-    }
-
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
@@ -211,6 +222,12 @@ public class LandingPageFragment extends Fragment {
             throw new RuntimeException(context.toString()
                     + " must implement OnFragmentInteractionListener");
         }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        mListener.onFragmentInteraction(getId());
     }
 
     @Override
@@ -231,6 +248,7 @@ public class LandingPageFragment extends Fragment {
      */
     public interface OnFragmentInteractionListener {
         // TODO: Update argument type and name
-        void onFragmentInteraction(Uri uri);
+        void onFragmentInteraction(int position);
     }
+
 }

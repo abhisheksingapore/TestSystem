@@ -6,7 +6,14 @@ import java.util.Map;
 
 import me.veganbuddy.veganbuddy.util.DateAndTimeUtils;
 
+import static me.veganbuddy.veganbuddy.util.Constants.DEFAULT_STATS_PIC_NAME;
+import static me.veganbuddy.veganbuddy.util.Constants.DEFAULT_VEGAN_DATE;
 import static me.veganbuddy.veganbuddy.util.DateAndTimeUtils.dateStamp;
+import static me.veganbuddy.veganbuddy.util.DateAndTimeUtils.dateStampHumanReadable;
+import static me.veganbuddy.veganbuddy.util.DateAndTimeUtils.dateofToday;
+import static me.veganbuddy.veganbuddy.util.DateAndTimeUtils.thisMonthString;
+import static me.veganbuddy.veganbuddy.util.DateAndTimeUtils.thisWeekString;
+import static me.veganbuddy.veganbuddy.util.DateAndTimeUtils.thisYearString;
 
 /**
  * Created by abhishek on 2/9/17.
@@ -17,10 +24,11 @@ public class Dashboard {
     /*Todo: Abstract Names of all the variables here because they become names of the "keys" in
     Todo..contd...  the FirebaseBase Database resulting in some hardcoding in "valueListeners" in FirebaseUtils class
     */
-    public int mealsForToday = 0;
+    private int mealsForToday = 0;
     private int mealsForLifetime = 0;
 
-    private String startDateOfVegan = "start"; //default
+    private String startDateOfVegan = DEFAULT_VEGAN_DATE; //default
+    private String lastPicName = DEFAULT_STATS_PIC_NAME;
     
     private Map <String, Integer> mealsForTheDay = new HashMap<>();
     private Map <String, Integer> mealsForTheYear = new HashMap<>();
@@ -32,17 +40,20 @@ public class Dashboard {
         //Empty Constructor
     }
 
+    //This constructor to be used for intializing the Dashboard for the first time in the application
     public Dashboard (int mealForToday ) {
-
-        this.mealsForLifetime = mealForToday;
-        this.mealsForToday = mealForToday;
-        this.startDateOfVegan = "start";
-        incrementMealsForTheDay(0);
-        incrementMealsForTheWeek(0);
-        incrementMealsForTheMonth(0);
-        incrementMealsForTheYear(0);
-
+        if (mealForToday==0) {
+            this.mealsForLifetime = mealForToday;
+            this.mealsForToday = mealForToday;
+            this.startDateOfVegan = dateStampHumanReadable();
+            this.lastPicName = DEFAULT_STATS_PIC_NAME;
+            this.mealsForTheDay.put(dateofToday(), mealForToday);
+            this.mealsForTheWeek.put(thisWeekString(), mealForToday);
+            this.mealsForTheMonth.put(thisMonthString(), mealForToday);
+            this.mealsForTheYear.put(thisYearString(), mealForToday);
+        }
     }
+
 
     public Dashboard incrementDashboardByOne () {
         mealsForLifetime = mealsForLifetime + 1;
@@ -51,10 +62,8 @@ public class Dashboard {
         } else {
             mealsForToday = 1;
         }
-
-        if (startDateOfVegan.equals("start")) {
-            startDateOfVegan = dateStamp();
-        }
+        if (startDateOfVegan.equals(DEFAULT_VEGAN_DATE) || startDateOfVegan == null)
+            this.startDateOfVegan = dateStampHumanReadable();
         incrementMealsForTheDay(getTodaysCurrentValue());
         incrementMealsForTheMonth(getThisMonthCurrentValue());
         incrementMealsForTheWeek(getThisWeekCurrentValue());
@@ -63,43 +72,96 @@ public class Dashboard {
     }
 
     private boolean notFirstMealOfToday() {
-        String dateofToday = dateStamp();
-        return mealsForTheDay.containsKey(dateofToday);
+        String dateofTodayStr = dateStamp();
+        return mealsForTheDay.containsKey(dateofTodayStr);
     }
 
+    public boolean todayExistsInDashboard(){
+        String dateofTodayStr = dateStamp();
+        return mealsForTheDay.containsKey(dateofTodayStr);
+    }
 
     private Integer getTodaysCurrentValue() {
-        String dateOfToday = dateStamp();
-        
-        return mealsForTheDay.get(dateOfToday);
+        return mealsForTheDay.get(dateofToday());
     }
 
     private Integer getThisYearCurrentValue() {
-        int thisYear = DateAndTimeUtils.thisYear();
-        String thisYearString = Integer.toString(thisYear);
-
-        return mealsForTheYear.get(thisYearString);
+        return mealsForTheYear.get(thisYearString());
     }
 
     private Integer getThisWeekCurrentValue() {
-        int thisWeek = DateAndTimeUtils.thisWeek();
-        String thisWeekString = Integer.toString(thisWeek);
-
-        return mealsForTheWeek.get(thisWeekString);
+        return mealsForTheWeek.get(thisWeekString());
     }
 
     private Integer getThisMonthCurrentValue() {
-        int thisMonth = DateAndTimeUtils.thisMonth();
-        String thisMonthString = Integer.toString(thisMonth);
-
-        return mealsForTheMonth.get(thisMonthString);
+        return mealsForTheMonth.get(thisMonthString());
     }
-    
-    //Get Methods for each of the Dashboard variables
+
+    //Methods to create Dashboard data for the day, this week, this month and this year
+    private void incrementMealsForTheDay(Integer currentValue) {
+        Integer newValue;
+        if (currentValue==null) {
+            newValue = 1;
+        } else {
+            newValue = currentValue + 1;
+        }
+        this.mealsForTheDay.put(dateofToday(), newValue);
+    }
+
+    private void incrementMealsForTheYear(Integer currentValue) {
+        Integer newValue;
+        if (currentValue==null) {
+            newValue = 1;
+        } else {
+            newValue = currentValue + 1;
+        }
+        this.mealsForTheYear.put(thisYearString(), newValue);
+    }
+
+    private void incrementMealsForTheMonth(Integer currentValue) {
+        Integer newValue;
+        if (currentValue==null) {
+            newValue = 1;
+        } else {
+            newValue = currentValue + 1;
+        }
+        this.mealsForTheMonth.put(thisMonthString(), newValue);
+    }
+
+    private void incrementMealsForTheWeek(Integer currentValue) {
+        int thisWeek = DateAndTimeUtils.thisWeek();
+        Integer newValue;
+        if (currentValue==null) {
+            newValue = 1;
+        } else {
+            newValue = currentValue + 1;
+        }
+        this.mealsForTheWeek.put(thisWeekString(),newValue);
+    }
+
+    public boolean checkIfTodaysDateExistsInDatabase() {
+        if (notFirstMealOfToday()) return true;
+        else {
+            mealsForToday = 0;
+            return false;
+        }
+    }
+
+    public void setMealsForToday(int mealsForToday) {
+        this.mealsForToday = mealsForToday;
+
+        //check if it is first meal of the day, if yes, then initialize today's date in mealsForTheDay
+        if (mealsForToday ==0 ) this.mealsForTheDay.put(dateofToday(), mealsForToday);
+    }
+
+    public void setLastPicName(String lastPicName) {
+        this.lastPicName = lastPicName;
+    }
+
+    //////////Get Methods for each of the Dashboard variables/////////////
     public int getMealsForToday() {
         return mealsForToday;
     }
-
 
     public int getMealsForLifetime() {
         return mealsForLifetime;
@@ -122,64 +184,13 @@ public class Dashboard {
     }
 
     public String getStartDateOfVegan() {
-        return startDateOfVegan;
+         if (startDateOfVegan.equals(DEFAULT_VEGAN_DATE) || startDateOfVegan == null)
+             this.startDateOfVegan = dateStampHumanReadable();
+         return startDateOfVegan;
     }
 
-
-    //Methods to create Dashboard data for the day, this week, this month and this year
-
-    private void incrementMealsForTheDay(Integer currentValue) {
-        String dateofToday = dateStamp();
-        Integer newValue;
-        if (currentValue==null) {
-            newValue = 1;
-        } else {
-            newValue = currentValue + 1;
-        }
-        this.mealsForTheDay.put(dateofToday, newValue);
+    public String getLastPicName() {
+        return lastPicName;
     }
 
-    public void incrementMealsForTheYear(Integer currentValue) {
-        int thisYear = DateAndTimeUtils.thisYear();
-        Integer newValue;
-        if (currentValue==null) {
-            newValue = 1;
-        } else {
-            newValue = currentValue + 1;
-        }
-        String thisYearString = Integer.toString(thisYear);
-        this.mealsForTheYear.put(thisYearString, newValue);
-    }
-
-    public void incrementMealsForTheMonth(Integer currentValue) {
-        int thisMonth = DateAndTimeUtils.thisMonth();
-        Integer newValue;
-        if (currentValue==null) {
-            newValue = 1;
-        } else {
-            newValue = currentValue + 1;
-        }
-        String thisMonthString = Integer.toString(thisMonth);
-        this.mealsForTheMonth.put(thisMonthString, newValue);
-    }
-
-    public void incrementMealsForTheWeek(Integer currentValue) {
-        int thisWeek = DateAndTimeUtils.thisWeek();
-        Integer newValue;
-        if (currentValue==null) {
-            newValue = 1;
-        } else {
-            newValue = currentValue + 1;
-        }
-        String thisWeekString = Integer.toString(thisWeek);
-        this.mealsForTheWeek.put(thisWeekString,newValue);
-    }
-
-    public boolean checkIfTodaysDateExistsInDatabase() {
-        if (notFirstMealOfToday()) return true;
-        else {
-            mealsForToday = 0;
-            return false;
-        }
-    }
 }

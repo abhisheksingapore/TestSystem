@@ -3,6 +3,7 @@ package me.veganbuddy.veganbuddy.ui;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
@@ -12,13 +13,17 @@ import android.os.Bundle;
 import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
+import android.preference.SwitchPreference;
+import android.support.annotation.Nullable;
 import android.support.v7.app.ActionBar;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.preference.RingtonePreference;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.MenuItem;
 import android.support.v4.app.NavUtils;
+import android.widget.Toast;
 
 import me.veganbuddy.veganbuddy.R;
 
@@ -41,7 +46,8 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
      * A preference value change listener that updates the preference's summary
      * to reflect its new value.
      */
-    private static Preference.OnPreferenceChangeListener sBindPreferenceSummaryToValueListener = new Preference.OnPreferenceChangeListener() {
+    private static Preference.OnPreferenceChangeListener sBindPreferenceSummaryToValueListener
+            = new Preference.OnPreferenceChangeListener() {
         @Override
         public boolean onPreferenceChange(Preference preference, Object value) {
             String stringValue = value.toString();
@@ -88,6 +94,7 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
             return true;
         }
     };
+
 
     /**
      * Helper method to determine if the device has an extra-large screen. For
@@ -173,7 +180,8 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
         return PreferenceFragment.class.getName().equals(fragmentName)
                 || GeneralPreferenceFragment.class.getName().equals(fragmentName)
                 || DataSyncPreferenceFragment.class.getName().equals(fragmentName)
-                || NotificationPreferenceFragment.class.getName().equals(fragmentName);
+                || NotificationPreferenceFragment.class.getName().equals(fragmentName)
+                || SocialMediaPreferenceFragment.class.getName().equals(fragmentName);
     }
 
     /**
@@ -266,4 +274,31 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
             return super.onOptionsItemSelected(item);
         }
     }
+
+    public static class SocialMediaPreferenceFragment extends PreferenceFragment {
+        @Override
+        public void onCreate(@Nullable Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+            addPreferencesFromResource(R.xml.pref_social_media);
+            //bindPreferenceIconToValue(getContext(), findPreference("pref_social_facebook"));
+        }
+    }
+
+   /*private static void bindPreferenceIconToValue(Context context, Preference social_preference) {
+        social_preference.setOnPreferenceChangeListener(bindPreferenceIconToValueListener);
+        Toast.makeText(context, "Facebook Changed", Toast.LENGTH_SHORT).show();
+    }
+
+    private static Preference.OnPreferenceChangeListener bindPreferenceIconToValueListener
+            = new Preference.OnPreferenceChangeListener() {
+
+        @Override
+        public boolean onPreferenceChange(Preference preference, Object o) {
+            SwitchPreference changedPref = (SwitchPreference)preference;
+            Log.i("TESTING", "Facebook preference change triggered " + preference.getKey());
+            return true;
+        }
+    };*/
+
+
 }

@@ -63,11 +63,15 @@ public class DateAndTimeUtils {
     }
 
     public static String dateTimeStamp(){
-        return new SimpleDateFormat("yyyyMMMdd_HHmmss", Locale.ENGLISH).format(new Date());
+        return new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.ENGLISH).format(new Date());
     }
 
     public static String dateStamp(){
-        return new SimpleDateFormat("yyyyMMMdd", Locale.ENGLISH).format(new Date());
+        return new SimpleDateFormat("yyyyMMdd", Locale.ENGLISH).format(new Date());
+    }
+
+    public static String dateStampHumanReadable(){
+        return new SimpleDateFormat("yyyy-MMM-dd", Locale.ENGLISH).format(new Date());
     }
 
     public static int thisWeek(){
@@ -83,7 +87,7 @@ public class DateAndTimeUtils {
     }
 
     public static String timeDifference(String receivedDate) {
-        SimpleDateFormat format = new SimpleDateFormat("yyyyMMMdd_HHmmss", Locale.ENGLISH);
+        SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.ENGLISH);
         String timeAndDaysDifference = "";
         try {
             String todaysDate = dateTimeStamp();
@@ -104,6 +108,7 @@ public class DateAndTimeUtils {
                     int diffDaysInt = (int) diffDays;
                     timeAndDaysDifference = Integer.toString(diffDaysInt) + " days ago";
                 } else timeAndDaysDifference = "1 day ago";
+                //Todo: fix the messaging if timeanddaysdiference is > 1 day. e.g. 1 day and 15 hours
             } else if (diffHours > 0) {
                 if (diffHours > 1) {
                     int diffHoursInt = (int) diffHours;
@@ -120,5 +125,46 @@ public class DateAndTimeUtils {
         }
         return timeAndDaysDifference;
     }
+
+    public static int daysSinceVegan(String veganDate) {
+        SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd", Locale.ENGLISH);
+        int diffDays=0;
+        try {
+            String todaysDate = dateStampHumanReadable();
+            Date d1 = format.parse(veganDate);
+            Date d2 = format.parse(todaysDate);
+
+            long diff = d2.getTime() - d1.getTime();
+
+            diffDays = (int)(diff / (24 * 60 * 60 * 1000));
+        } catch (ParseException PE) {
+            PE.printStackTrace();
+        }
+        return diffDays;
+    }
+
+    public static String dateofToday() {
+        String dateOfToday = dateStamp();
+        return dateOfToday;
+    }
+
+    public static String thisWeekString() {
+        int thisWeek = DateAndTimeUtils.thisWeek();
+        String thisWeekString = Integer.toString(thisWeek);
+        return thisWeekString;
+    }
+
+    public static String thisMonthString() {
+        int thisMonth = DateAndTimeUtils.thisMonth();
+        String thisMonthString = Integer.toString(thisMonth);
+        return thisMonthString;
+    }
+
+    public static String thisYearString() {
+        int thisYear = DateAndTimeUtils.thisYear();
+        String thisYearString = Integer.toString(thisYear);
+        return thisYearString;
+    }
+
 
 }
