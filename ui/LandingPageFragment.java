@@ -1,29 +1,17 @@
 package me.veganbuddy.veganbuddy.ui;
 
 import android.content.Context;
-import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
-import android.support.v4.widget.SwipeRefreshLayout;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.Spinner;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
-import com.google.firebase.storage.StorageReference;
 import com.jackandphantom.circularprogressbar.CircleProgressbar;
 
 
@@ -31,11 +19,9 @@ import me.veganbuddy.veganbuddy.R;
 import me.veganbuddy.veganbuddy.actors.Dashboard;
 import me.veganbuddy.veganbuddy.util.MeatMathUtils;
 
-import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.allUsersPostsList;
-import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.postList;
-import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.userFirebaseIDs;
+import static me.veganbuddy.veganbuddy.util.Constants.ANIMALS_DASHBOARD_LAYOUT;
+import static me.veganbuddy.veganbuddy.util.Constants.VEGAN_DASHBOARD_LAYOUT;
 import static me.veganbuddy.veganbuddy.util.GlobalVariables.myDashboard;
-import static me.veganbuddy.veganbuddy.util.GlobalVariables.thisAppUser;
 import static me.veganbuddy.veganbuddy.util.MeatMathUtils.GREEN_COLOR;
 import static me.veganbuddy.veganbuddy.util.MeatMathUtils.RED_COLOR;
 import static me.veganbuddy.veganbuddy.util.MeatMathUtils.YELLOW_COLOR;
@@ -54,18 +40,8 @@ public class LandingPageFragment extends Fragment {
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
     private static final String ARG_PARAM1 = "param1";
 
-    //Static variables to decide which Fragment Layout is to be loaded
-    private static final int ANIMALS_DASHBOARD_LAYOUT = 0;
-    private static final int VEGAN_DASHBOARD_LAYOUT = 1;
-    private static final int PLACARD_LAYOUT = 2;
-    private static final int MY_PLACARD_LAYOUT = 3;
-
     // TODO: Rename and change types of parameters
     private int mParam1;
-
-    public static PlacardsRecyclerViewAdapter placardsRecyclerViewAdapter;
-    public static PlacardsRecyclerViewAdapter placardsRecyclerViewAdapterAllPosts;
-
 
     private OnFragmentInteractionListener mListener;
 
@@ -101,10 +77,6 @@ public class LandingPageFragment extends Fragment {
             break;
             case VEGAN_DASHBOARD_LAYOUT: resourceID = R.layout.fragment_dashboard_vegan_percentage;
             break;
-            case PLACARD_LAYOUT: resourceID = R.layout.fragment_placard;
-            break;
-            case MY_PLACARD_LAYOUT: resourceID = R.layout.fragment_placard;
-            break;
             default:resourceID = R.layout.fragment_landing_page;
             break;
         }
@@ -115,48 +87,12 @@ public class LandingPageFragment extends Fragment {
     public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        if (mParam1 == ANIMALS_DASHBOARD_LAYOUT) {
-            loadDashboardAnimals(view);
+        switch (mParam1){
+            case ANIMALS_DASHBOARD_LAYOUT: loadDashboardAnimals(view);
+            break;
+            case VEGAN_DASHBOARD_LAYOUT: loadVeganDashBoardData (view);
+            break;
         }
-
-        if (mParam1 == VEGAN_DASHBOARD_LAYOUT) {
-            loadVeganDashBoardData (view);
-        }
-
-        if (mParam1 == PLACARD_LAYOUT) {
-            loadAllPlacardView (view);
-        }
-
-        if (mParam1 == MY_PLACARD_LAYOUT) {
-            loadMyPlacardView (view);
-        }
-    }
-
-    @Override
-    public void onStart() {
-        super.onStart();
-    }
-
-
-    private void loadAllPlacardView(View view) {
-        RecyclerView placardsAllPostsRecyclerView = view.findViewById(R.id.fp_placards_recyclerView);
-        LinearLayoutManager allPostsLayoutManager = new LinearLayoutManager(getActivity());
-        placardsAllPostsRecyclerView.setHasFixedSize(true);
-        placardsAllPostsRecyclerView.setLayoutManager(allPostsLayoutManager);
-
-        placardsRecyclerViewAdapterAllPosts = new PlacardsRecyclerViewAdapter(allUsersPostsList,
-                userFirebaseIDs, view.getContext());
-        placardsAllPostsRecyclerView.setAdapter(placardsRecyclerViewAdapterAllPosts);
-    }
-
-    private void loadMyPlacardView(View view){
-        RecyclerView placardsRecyclerView = view.findViewById(R.id.fp_placards_recyclerView);
-        LinearLayoutManager postsLayoutManager = new LinearLayoutManager(getActivity());
-        placardsRecyclerView.setHasFixedSize(true);
-        placardsRecyclerView.setLayoutManager(postsLayoutManager);
-
-        placardsRecyclerViewAdapter = new PlacardsRecyclerViewAdapter(postList, view.getContext());
-        placardsRecyclerView.setAdapter(placardsRecyclerViewAdapter);
     }
 
     private void loadVeganDashBoardData(View view) {

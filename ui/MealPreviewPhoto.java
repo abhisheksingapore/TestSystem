@@ -16,13 +16,14 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.bumptech.glide.Glide;
-import com.firebase.ui.storage.images.FirebaseImageLoader;
+import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
+import com.squareup.picasso.Picasso;
 
 import java.io.File;
 
@@ -45,7 +46,6 @@ import static me.veganbuddy.veganbuddy.util.Constants.VEGANPHILOSOPHY;
 import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.getAppMessage;
 import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.getNextPicName;
 import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.getStatsPicReference;
-import static me.veganbuddy.veganbuddy.util.GlobalVariables.myDashboard;
 import static me.veganbuddy.veganbuddy.util.GlobalVariables.thisAppUser;
 import static me.veganbuddy.veganbuddy.util.SocialMediaUtils.uploadToSocialMedia;
 
@@ -62,8 +62,8 @@ public class MealPreviewPhoto extends AppCompatActivity {
     public boolean pinThisPic;
 
 
-    public static TextView textViewAppMessage;
-    public static ImageView imageViewStatsPic;
+    public TextView textViewAppMessage;
+    public ImageView imageViewStatsPic;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -80,7 +80,6 @@ public class MealPreviewPhoto extends AppCompatActivity {
                 startActivity(intent);
 
                 saveScreenShot ();
-                myDashboard.setLastPicName(getNextPicName());
                 uploadPhotoAndDashboardData();
             }
         });
@@ -116,11 +115,16 @@ public class MealPreviewPhoto extends AppCompatActivity {
         if (appMessage!=null) {
             textViewAppMessage.setText(appMessage);
             StorageReference statsPicReference = getStatsPicReference(getNextPicName());
-            Toast.makeText(this, getNextPicName(), Toast.LENGTH_SHORT).show();
-            Glide.with(this)
-                    .using(new FirebaseImageLoader())
-                    .load(statsPicReference)
-                    .into(imageViewStatsPic);
+
+            final Task <Uri> uriTask = statsPicReference.getDownloadUrl();
+            uriTask.addOnCompleteListener(new OnCompleteListener<Uri>() {
+                @Override
+                public void onComplete(@NonNull Task<Uri> task) {
+                    Picasso.with(getBaseContext())
+                            .load(task.getResult())
+                            .into(imageViewStatsPic);
+                }
+            });
         } else {
             textViewAppMessage.setText("Vegetarianism stops animal killing for food");
         }
@@ -141,7 +145,7 @@ public class MealPreviewPhoto extends AppCompatActivity {
         imageURI = BitmapUtils.getPhotoUri();
         imageFileName = BitmapUtils.getImageFileName();
 
-        Glide.with(this).load(thumbnailImageURI).into(imageView);
+        Picasso.with(this).load(thumbnailImageURI).into(imageView);
         TextView textViewComment = findViewById(R.id.tv_preview_comments);
         TextView textViewLocation = findViewById(R.id.cmpp_tv_location);
 

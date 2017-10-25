@@ -3,6 +3,7 @@ package me.veganbuddy.veganbuddy.util;
 import android.content.Context;
 
 import me.veganbuddy.veganbuddy.R;
+import me.veganbuddy.veganbuddy.actors.Dashboard;
 import me.veganbuddy.veganbuddy.actors.User;
 
 import static me.veganbuddy.veganbuddy.util.GlobalVariables.myDashboard;
@@ -76,6 +77,9 @@ public class MeatMathUtils {
         if (actor.equals(context.getString(R.string.filter1_default_selection))) {
             if (duration.equals(context.getString(R.string.filter2_default_selection))) {
                 totalPotentialNumberOfMeals = NUMBER_OF_MEALS_PER_DAY;
+
+                //catch the exception where the app opens without a valid myDashboard Data
+                if (myDashboard == null) myDashboard = new Dashboard(0);
                 veganMealsForDuration = (double)myDashboard.getMealsForToday();
                 calculatePercentage();
             }

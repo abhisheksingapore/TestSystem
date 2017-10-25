@@ -28,6 +28,8 @@ public class User {
     String photoUrl;
     String email;
     String lastPostID;
+    Map<String, String> myLikes = new HashMap<>();
+
 
     public User(){
         //default empty constructor
@@ -59,6 +61,10 @@ public class User {
 
     public void setLastPostID(String lastPostID) {
         this.lastPostID = lastPostID;
+    }
+
+    public void setMyLikes(String userId, String postID) {
+        this.myLikes.put(userId, postID);
     }
 
     public String getMyPinterestID() {
@@ -95,5 +101,13 @@ public class User {
 
     public String getLastPostID() {
         return lastPostID;
+    }
+
+    public Map<String, String> getMyLikes() {
+        return myLikes;
+    }
+
+    public void deleteMyLike(String userFirebaseID) {
+        this.myLikes.remove(userFirebaseID);
     }
 }

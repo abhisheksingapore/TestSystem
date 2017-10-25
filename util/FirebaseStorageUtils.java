@@ -13,33 +13,39 @@ import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import me.veganbuddy.veganbuddy.actors.AppMessageForTheDay;
 import me.veganbuddy.veganbuddy.actors.Comments;
 import me.veganbuddy.veganbuddy.actors.Post;
+import me.veganbuddy.veganbuddy.actors.Vcoins;
+import me.veganbuddy.veganbuddy.actors.Vnotification;
 
 
-import static me.veganbuddy.veganbuddy.ui.LandingPageFragment.placardsRecyclerViewAdapter;
 import static me.veganbuddy.veganbuddy.ui.CommentsActivity.placardCommentsRecyclerViewAdapter;
-import static me.veganbuddy.veganbuddy.ui.LandingPageFragment.placardsRecyclerViewAdapterAllPosts;
+import static me.veganbuddy.veganbuddy.util.Constants.ACTIONED;
 import static me.veganbuddy.veganbuddy.util.Constants.COMMENTS_COUNT_NODE;
 import static me.veganbuddy.veganbuddy.util.Constants.COMMENTS_NODE;
 import static me.veganbuddy.veganbuddy.util.Constants.DASHBOARD_NODE;
-import static me.veganbuddy.veganbuddy.util.Constants.DATE_STAMP_KEY_NAME;
 import static me.veganbuddy.veganbuddy.util.Constants.DEFAULT_STATS_PIC_NAME;
 import static me.veganbuddy.veganbuddy.util.Constants.FB_ERROR_TAG;
 import static me.veganbuddy.veganbuddy.util.Constants.FIRST_PIC_NAME;
+import static me.veganbuddy.veganbuddy.util.Constants.INBOUND;
 import static me.veganbuddy.veganbuddy.util.Constants.INCREASE_BY_ONE;
 import static me.veganbuddy.veganbuddy.util.Constants.LAST_POSTS_NODE;
+import static me.veganbuddy.veganbuddy.util.Constants.NOT_VIEWED_YET;
 import static me.veganbuddy.veganbuddy.util.Constants.NUMBER_OF_COMMENTS_TO_RETRIEVE;
-import static me.veganbuddy.veganbuddy.util.Constants.NUMBER_OF_POSTS_TO_RETRIEVE;
+import static me.veganbuddy.veganbuddy.util.Constants.OUTBOUND;
 import static me.veganbuddy.veganbuddy.util.Constants.POSTS_NODE;
 import static me.veganbuddy.veganbuddy.util.Constants.PROFILE_NODE;
 import static me.veganbuddy.veganbuddy.util.Constants.STATISTICS_IMAGES_FOLDER;
 import static me.veganbuddy.veganbuddy.util.Constants.SUPPORTED_FILE_EXTENSION;
 import static me.veganbuddy.veganbuddy.util.Constants.VEGAN_PHILOSOPHY_NODE;
+import static me.veganbuddy.veganbuddy.util.Constants.VN_UPLOADED_NEW_MEAL_PHOTO;
+import static me.veganbuddy.veganbuddy.util.Constants.V_NOTIFICATIONS_NODE;
 import static me.veganbuddy.veganbuddy.util.GlobalVariables.myDashboard;
 import static me.veganbuddy.veganbuddy.util.GlobalVariables.thisAppUser;
 /**
@@ -48,18 +54,13 @@ import static me.veganbuddy.veganbuddy.util.GlobalVariables.thisAppUser;
 
 public class FirebaseStorageUtils {
 
-    static FirebaseDatabase mDatabase;
-    static StorageReference mStorageRef; //Reference for root reference to storage location
-    static StorageReference picStorage;
-    static DatabaseReference myRef; //Reference for nodes in the database
-    static String appMessage;
-    static String nextPicName;
+    private static FirebaseDatabase mDatabase;
+    private static StorageReference mStorageRef; //Reference for root reference to storage location
+    private static StorageReference picStorage;
+    private static DatabaseReference myRef; //Reference for nodes in the database
+    private static String appMessage;
+    private static String nextPicName;
 
-    private static DataSnapshot postDataSnapshot; //declare as local variable
-    private static DataSnapshot allPostDataSnapshot; //declare as local variable
-    public static List<Post> postList;
-    public static List<Post> allUsersPostsList;
-    public static List<String> userFirebaseIDs;
     public static List<Comments> commentsList;
     public static FirebaseAuth mFirebaseAuth;
     public static boolean dashboardDataUpdated;
@@ -82,93 +83,23 @@ public class FirebaseStorageUtils {
         mStorageRef = FirebaseStorage.getInstance().getReference();
     }
 
-    //This sets reference to to lastPosts node in the database
-    private static void setAllPostsFirebaseReference() {
+    //This sets reference to the global database and storage parameters
+    private static void setLikesFirebaseReference() {
+        mDatabase = FirebaseDatabase.getInstance();
+        myRef = mDatabase.getReference();
+    }
+
+        //This sets reference to to lastPosts node in the database
+    private static void setLastPostsFirebaseReference() {
         mDatabase = FirebaseDatabase.getInstance();
         myRef = mDatabase.getReference().child(LAST_POSTS_NODE);
     }
 
-    public static void retrievePostsData() {
-        setProperDatabaseReference(); //This sets reference to user specific nodes in the database
-        Query recentPostsRef = myRef.child(POSTS_NODE).limitToLast(NUMBER_OF_POSTS_TO_RETRIEVE);
-        recentPostsRef.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                if (dataSnapshot.getChildrenCount() > 0) {
-                    postDataSnapshot = dataSnapshot;
-                    createArrayFromFirebasePosts();
-                }
-                else {
-                    Log.v(FB_ERROR_TAG, "No children found for POSTS. Creating a new node");
-                }
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-                Log.v(FB_ERROR_TAG, "error found");
-            }
-        });
+    //This sets reference to to Notifications node in the database
+    private static void setNotificationsFirebaseReference() {
+        mDatabase = FirebaseDatabase.getInstance();
+        myRef = mDatabase.getReference().child(V_NOTIFICATIONS_NODE);
     }
-
-    public static void retrieveAllPostsData() {
-        setAllPostsFirebaseReference();
-        Query recentPostsRef = myRef
-                .limitToLast(NUMBER_OF_POSTS_TO_RETRIEVE)
-                .orderByChild(DATE_STAMP_KEY_NAME);
-        recentPostsRef.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                if (dataSnapshot.getChildrenCount() > 0) {
-                    allPostDataSnapshot = dataSnapshot;
-                    createArrayFromAllFirebasePosts();
-                    Log.v(FB_ERROR_TAG, "Children found in retrieveAllPostsData...");
-                }
-                else {
-                    Log.v(FB_ERROR_TAG, "No children found for POSTS in retrieveAllPostsData...");
-                }
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-                Log.v(FB_ERROR_TAG, "error found");
-            }
-        });
-    }
-
-
-    //Method to the update the array of all posts for this particular user
-    private static void createArrayFromFirebasePosts() {
-        postList = new ArrayList<>();
-
-        for (DataSnapshot singleSnapShot: postDataSnapshot.getChildren()) {
-            Post thisPost = singleSnapShot.getValue(Post.class);
-            postList.add(thisPost);
-        }
-
-        if (placardsRecyclerViewAdapter!=null) {
-            placardsRecyclerViewAdapter.setListofPosts(postList);
-            placardsRecyclerViewAdapter.notifyDataSetChanged();
-        }
-    }
-
-    //Method to the update the array of last posts of all the users
-    private static void createArrayFromAllFirebasePosts() {
-        allUsersPostsList = new ArrayList<>();
-        userFirebaseIDs = new ArrayList<>();
-
-        for (DataSnapshot singleSnapShot: allPostDataSnapshot.getChildren()) {
-            Post thisPost = singleSnapShot.getValue(Post.class);
-            allUsersPostsList.add(thisPost);
-            userFirebaseIDs.add(singleSnapShot.getKey());
-        }
-
-        if (placardsRecyclerViewAdapterAllPosts!=null) {
-            placardsRecyclerViewAdapterAllPosts.setListofPosts(allUsersPostsList);
-            placardsRecyclerViewAdapterAllPosts.notifyDataSetChanged();
-        }
-    }
-
-
 
     public static void addNodesToDatabase(String photoURL, String thumbnailURL,
                                           String screenshotURL, String userInputText,
@@ -176,9 +107,30 @@ public class FirebaseStorageUtils {
 
         setProperDatabaseReference();
         //Methods to save relevant Data into the Firebase Database
-        setPostsData(photoURL, thumbnailURL, screenshotURL, userInputText, photoLocation);
+        Post thisPost = setPostsData(photoURL, thumbnailURL, screenshotURL, userInputText, photoLocation);
         setUserData();
         setDashboardData(INCREASE_BY_ONE); //Trigger Dashboard data change at last
+        setVnotificationData(VN_UPLOADED_NEW_MEAL_PHOTO, thisPost, BitmapUtils.getPhotoThumbnailURL(),
+                thisAppUser.getFireBaseID(), thisAppUser.getUserName(), thisAppUser.getPhotoUrl(), thisAppUser.getFireBaseID());
+    }
+
+    private static void setVnotificationData(String vnotificationType, Post thisPost,
+                                             String screenshotThumbURL, String senderID, String senderName,
+                                             String senderIDpic, String recipientID) {
+        setNotificationsFirebaseReference();
+        Vcoins vcoins = new Vcoins(ACTIONED,VN_UPLOADED_NEW_MEAL_PHOTO);
+        Vnotification vNotification = new Vnotification(vnotificationType, thisPost.getDatestamp(),
+                NOT_VIEWED_YET, senderID, senderName, senderIDpic, screenshotThumbURL, vcoins.vCoinsEarnedString());
+
+        //create the notifications in the Database FOR the given users (sender and recipient)
+        // AT the given date_time_stamp
+        myRef.child(senderID).child(OUTBOUND).child(thisPost.getDatestamp()).setValue(vNotification);
+
+        //if Sender is different from the recipient, then create the "INBOUND" notification for
+        // the recipient
+        if (!senderID.equals(recipientID)) {
+            myRef.child(recipientID).child(INBOUND).child(thisPost.getDatestamp()).setValue(vNotification);
+        }
     }
 
     public static void setDashboardData(boolean increase) {
@@ -191,12 +143,12 @@ public class FirebaseStorageUtils {
     }
 
     //Method to save the photoURL and text input by user for that particular meal
-    private static void setPostsData(String photoURL, String thumbnailURL, String screenshotURL,
+    private static Post setPostsData(String photoURL, String thumbnailURL, String screenshotURL,
                                      String userInputText, String photoLocation) {
         String dateTime = DateAndTimeUtils.dateTimeStamp();
         setProperDatabaseReference(); //This sets reference to user specific nodes in the database
         Post newPost = new Post(
-                thisAppUser.getPhotoUrl().toString(),
+                thisAppUser.getPhotoUrl(),
                 thisAppUser.getUserName(),
                 photoURL,
                 dateTime,
@@ -207,13 +159,15 @@ public class FirebaseStorageUtils {
                 0,
                 false,
                 false,
-                0);
+                0,
+                null);
         thisAppUser.setLastPostID(newPost.getDatestamp());
         myRef.child(POSTS_NODE).child(dateTime).setValue(newPost);
 
         //Maintain a list of last posts for display to all the other users of the app
-        setAllPostsFirebaseReference();
+        setLastPostsFirebaseReference();
         myRef.child(thisAppUser.getFireBaseID()).setValue(newPost);
+        return newPost;
     }
 
     //Method to store some specific Data about the user profile in the Firebase Database
@@ -228,28 +182,101 @@ public class FirebaseStorageUtils {
         myRef.child(POSTS_NODE).child(dateStampID).child("iLoveFlag").setValue(newValue);
         myRef.child(POSTS_NODE).child(dateStampID).child("likesCount").setValue(newLikeCount);
 
-        //Check if this is the "LastPost" for this user. If yes, then update it as well
+        //Check if this is the "LastPost" for this user. If yes, then update it as well and
+        // also update the "mylikes" flag of thisAppUser
         if (dateStampID.equals(thisAppUser.getLastPostID())) {
-            setAllPostsFirebaseReference(); //To update the AllPosts under the "LastPosts" node
+            setLastPostsFirebaseReference(); //To update the AllPosts under the "LastPosts" node
             myRef.child(thisAppUser.getFireBaseID()).child("iLoveFlag").setValue(newValue);
             myRef.child(thisAppUser.getFireBaseID()).child("likesCount").setValue(newLikeCount);
+            if (newValue) {
+                thisAppUser.setMyLikes(thisAppUser.getFireBaseID(), dateStampID);
+                setUserData();
+            } else {
+                //Remove this post from "myLikes' for thisAppUser
+                thisAppUser.deleteMyLike(thisAppUser.getFireBaseID());
+                setUserData();
+            }
         }
 
     }
 
     //Method to the update the "iLike" flag and "likesCount" of a given post of ANY user
-    public static void updateIlike(String dateStampID, boolean newValue, int newLikeCount, String userFirebaseID) {
-        setAllPostsFirebaseReference(); //To update the AllPosts under the "LastPosts" node
-        myRef.child(userFirebaseID).child("iLoveFlag").setValue(newValue);
-        myRef.child(userFirebaseID).child("likesCount").setValue(newLikeCount);
+    public static void updateMyLikes(String dateStampID, boolean newValue, int newLikeCount,
+                                     String userFirebaseID) {
+        setLikesFirebaseReference(); //To update both "posts" and the "lastPosts" node
 
-        setPicsFirebaseReference();//To update the original posts in the main key for the respective user
+        //Update the like count of the Original Post itself
         myRef.child(userFirebaseID).child(POSTS_NODE).child(dateStampID).child("likesCount").setValue(newLikeCount);
 
+
+        //if the user is not liking his own post, Update the likedMe node of the Original Post itself
+        if (!userFirebaseID.equals(thisAppUser.getFireBaseID()))
+        myRef.child(userFirebaseID).child(POSTS_NODE).child(dateStampID).child("likedMe")
+                .setValue(addNewLikedMe(thisAppUser.getFireBaseID(), thisAppUser.getPhotoUrl()));
+        //Else, if the user is liking his own post in the "LASTPosts" fragment, then update
+        // the "iLoveFlag" for the Original post of thisAppUser
+        else if (userFirebaseID.equals(thisAppUser.getFireBaseID())) {
+            myRef.child(userFirebaseID).child(POSTS_NODE).child(dateStampID).child("iLoveFlag")
+                    .setValue(newValue);
+        }
+
+        //Update the like count of the lastPosts node
+        myRef.child(LAST_POSTS_NODE).child(userFirebaseID).child("likesCount").setValue(newLikeCount);
+
+
+        //if the user is not liking his own post, Update the likedMe node of the lastPosts
+        if (!userFirebaseID.equals(thisAppUser.getFireBaseID()))
+        myRef.child(LAST_POSTS_NODE).child(userFirebaseID).child("likedMe")
+                .setValue(addNewLikedMe(thisAppUser.getFireBaseID(),
+                        thisAppUser.getPhotoUrl()));
+        //However, if the user is liking his own post in the "ALL Posts" fragment, then update
+            // the "iLoveFlag" for the lastPost of thisAppUser
+        if (userFirebaseID.equals(thisAppUser.getFireBaseID())) {
+            myRef.child(LAST_POSTS_NODE).child(userFirebaseID).child("iLoveFlag").setValue(newValue);
+        }
+
+        //Finally, add this post to "myLikes' for thisAppUser
+        thisAppUser.setMyLikes(userFirebaseID, dateStampID);
+        setUserData();
+    }
+
+    private static Map<String, String> addNewLikedMe(String fireBaseID, String photoUrl) {
+        Map<String, String> map = new HashMap<>();
+        map.put(fireBaseID, photoUrl);
+        return map;
+    }
+
+    public static void deleteMyLikes(String dateStampID, boolean newValue, int newLikeCount,
+                                     String userFirebaseID, Post post) {
+
+        setLikesFirebaseReference(); //To update both "posts" and the "lastPosts" node
+
+        //Update the likesCount of the Original Post itself
+        myRef.child(userFirebaseID).child(POSTS_NODE).child(dateStampID).child("likesCount").setValue(newLikeCount);
+
+        //Update the likedMe node of the Original Post itself
+        myRef.child(userFirebaseID).child(POSTS_NODE).child(dateStampID).child("likedMe")
+                .child(thisAppUser.getFireBaseID()).removeValue();
+
         //Additionally, if the user is liking his own post in the "ALL Posts" fragment, then update
-        // the "iLoveFlag" for the post
-        if (userFirebaseID.equals(thisAppUser.getFireBaseID()))
-            myRef.child(userFirebaseID).child(POSTS_NODE).child(dateStampID).child("iLoveFlag").setValue(newValue);
+        // the "iLoveFlag" for the Original post of thisAppUser AS well as in the lastPosts
+        if (userFirebaseID.equals(thisAppUser.getFireBaseID())) {
+            myRef.child(userFirebaseID).child(POSTS_NODE).child(dateStampID).child("iLoveFlag")
+                    .setValue(newValue);
+            myRef.child(LAST_POSTS_NODE).child(userFirebaseID).child("iLoveFlag").setValue(newValue);
+        }
+
+        //Update the like count of the lastPosts node
+        myRef.child(LAST_POSTS_NODE).child(userFirebaseID).child("likesCount").setValue(newLikeCount);
+
+        //Update the likedMe node of the lastPosts as well
+        myRef.child(LAST_POSTS_NODE).child(userFirebaseID).child("likedMe")
+                .child(thisAppUser.getFireBaseID()).removeValue();
+
+        //Finally, remove this post from "myLikes' for thisAppUser
+        thisAppUser.deleteMyLike(userFirebaseID);
+        setUserData();
+
     }
 
     public static void retrieveCommentsData(String nodeID) {
@@ -346,14 +373,17 @@ public class FirebaseStorageUtils {
         //First check if it is the first update EVER for this user
         int defaultPicInt = Integer.parseInt(DEFAULT_STATS_PIC_NAME);
         int picNameInt = Integer.parseInt(picName);
+
+        //This condition will be true when the user is using the app for the first time
+        // and has no prior data
         if (picNameInt >= defaultPicInt) {
-            nextPicName = FIRST_PIC_NAME;
-            return nextPicName;
+            setNextPicName(FIRST_PIC_NAME);
+        } else {
+            //If it is not the first update then picName should be updated to a new name on date change
+            // but keep the same for the ongoing day
+            setNextPicFileName(picNameInt);
         }
-        //If it is not the first update then picName should be updated to a new name on date change
-        // but keep the same for the ongoing day
-        nextPicName = nextPicFileName (picNameInt);
-        return nextPicName;
+        return getNextPicName();
     }
 
     public static String getAppMessage() {
@@ -368,13 +398,16 @@ public class FirebaseStorageUtils {
         nextPicName = nextPic;
     }
 
-    private static String nextPicFileName(int oldFileNameInt ) {
+    private static void setNextPicFileName(int oldFileNameInt ) {
         int newFileNameInt;
+        String fileName;
         if (myDashboard.getMealsForToday()==0) {
             newFileNameInt = oldFileNameInt + 1; //increment the filename if this is first update for the day
         } else {
             newFileNameInt = oldFileNameInt;//keep it to the same filename if there are previous updates for the day
         }
-        return String.format(Locale.ENGLISH,"%05d", newFileNameInt);
+        fileName = String.format(Locale.ENGLISH,"%05d", newFileNameInt);
+        setNextPicName(fileName);
     }
+
 }

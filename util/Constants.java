@@ -1,5 +1,7 @@
 package me.veganbuddy.veganbuddy.util;
 
+import android.os.Build;
+
 import java.security.PublicKey;
 
 /**
@@ -13,8 +15,7 @@ public final class Constants {
 
     //Constants for LoginActivity.java
     public static final String LOGIN_TAG = "LoginActivity.java";
-    public static final String DOWNLOAD_PICS = "DOWNLOAD_PICS";
-    public static final String DELETE_PICS = "DELETE_PICS";
+    public static final String NOTIFICATION_CHANNEL_ID = "VeganBuddy_Notifications";
 
 
     //Constants for Dashboard.java and FirbaseStorageUtils.java
@@ -27,8 +28,25 @@ public final class Constants {
     //Constants for Landingpage.Java
     public static final int REQUEST_IMAGE_CAPTURE = 1;
     public static final String LP_TAG = "LandingPage.Java";
-    public static final int DASHBOARD_ANIMAL_FRAGMENT_ID = 0;
-    public static final int DASHBOARD_VEGAN_FRAGMENT_ID = 0;
+    public static final String CURRENT_USER = "currentUserPost";
+    public static final String HEART_FULL = "heart full";
+    public static final String HEART_EMPTY = "heart empty";
+
+    public static final String NO_LIKES = " No likes";
+    public static final String ONE_LIKE = " 1 like";
+
+    public static final String NO_COMMENT = " No comment";
+    public static final String ONE_COMMENT = " 1 comment";
+
+
+    //Constants for Landingpagefragment.Java
+    //Static variables to decide which Fragment Layout is to be loaded
+    public static final int ANIMALS_DASHBOARD_LAYOUT = 0;
+    public static final int VEGAN_DASHBOARD_LAYOUT = 1;
+    public static final int PLACARD_LAYOUT = 2;
+    public static final int MY_PLACARD_LAYOUT = 3;
+    public static final int NOTIFICATIONS_INBOUND_LAYOUT = 4;
+    public static final int NOTIFICATIONS_OUTBOUND_LAYOUT = 5;
 
     //Constants for Landingpage.Java and FullSizePhoto.java
     public static final String FULL_PHOTO_URI = "FullPhotoUri";
@@ -72,31 +90,20 @@ public final class Constants {
     final static String STATISTICS_IMAGES_FOLDER = "/animal_statistics/";
     final static String SUPPORTED_FILE_EXTENSION = ".png";
 
-    final static int NUMBER_OF_POSTS_TO_RETRIEVE = 20;//Todo: implement 'Pull Down' 'refresh' and 'add-more'
     final static int NUMBER_OF_COMMENTS_TO_RETRIEVE = 10;
     final static String VEGAN_PHILOSOPHY_NODE = "VeganPhilosophy";
+    final static boolean INCREASE_BY_ONE = true ;
     final static String COMMENTS_NODE = "comments";
     final static String COMMENTS_COUNT_NODE = "commentsCount";
     final static String POSTS_NODE = "posts";
     final static String LAST_POSTS_NODE = "lastPosts";
-    final static boolean INCREASE_BY_ONE = true ;
-    final static String DATE_STAMP_KEY_NAME = "datestamp";
-    public final static boolean DO_NOT_INCREASE = false;
+    final static String V_COINS_NODE = "vCoins";
+    public final static String V_NOTIFICATIONS_NODE = "vNotifications";
     public final static String PROFILE_NODE = "profile";
     public final static String DASHBOARD_NODE = "dashboard";
+
+    public final static boolean DO_NOT_INCREASE = false;
     public final static String DEFAULT_VEGAN_DATE = "start";
-
-    //Constants for PlacardsRecyclerViewAdapter.java
-    public static final String PRVA_TAG = "PlacardsViewAdapter";
-    public static final String CURRENT_USER = "currentUserPost";
-    public static final String HEART_FULL = "heart full";
-    public static final String HEART_EMPTY = "heart empty";
-
-    public static final String NO_LIKES = " No likes";
-    public static final String ONE_LIKE = " 1 like";
-
-    public static final String NO_COMMENT = " No comment";
-    public static final String ONE_COMMENT = " 1 comment";
 
     //Constants for PinterestLoginActivity.java
     public final static String PLA_TAG = "PinterestLoginActivity:";
@@ -108,9 +115,11 @@ public final class Constants {
     public final static String SLA_TAG = "SocialLoginsActivity:";
     public final static String VEGAN_BUDDY_PIN_BOARD = "VeganBuddy";
 
-    //Constants for DataRefresActivity.java
-    public static final int MAX_WAIT_TIME = 5; //equivalent to 5 seconds
-
+    //Constants for DataRefreshActivity.java
+    public static final String DRA_TAG = "DataRefreshActivity";
+    public static final int VN_NODES_TO_RETRIEVE = 20;
+    public static final String DATE_TIME_NODE = "createdAt";//Check against the variable declaration
+                                                            // of Vnotification.java
     //Constants for LandingPageFragment.java
     public final static String LPF_TAG = "LandingPageFragment:";
 
@@ -119,5 +128,40 @@ public final class Constants {
 
     //Constants for MyFirebaseMessagingService.java
     public static final String MFMS_TAG = "Firebase Msging Svc";
+
+    //Constants for VnotificationFragment.java
+    public static final String VNF_TAG = "VnotificationFragment";
+
+    // Constants for Vnotification.java
+    public static final String INBOUND = "INBOUND";
+    public static final String OUTBOUND = "OUTBOUND";
+    public static final String VN_UPLOADED_NEW_MEAL_PHOTO = "UPLOADED";
+    public static final String VN_LIKED_PHOTO = "LIKE";
+    public static final String VN_COMMENT_PHOTO = "COMMENT";
+    public static final String VN_DIRECT_MESSAGE = "MESSAGE";
+    public static final String VN_PHOTO_SHARE = "SHARE";
+    public static final String NOT_VIEWED_YET = "NEVER";
+
+    //Constants for Vcoins.Java
+    public static final double NEW_PHOTO_CREATED = 100;
+
+    public static final String ACTIONED = "ACTIONED";
+    public static final String RECEIVED = "RECEIVED";
+
+    public static final double ACTIONED_FACTOR = 1.0;
+    public static final double RECEIVED_FACTOR = 0.8;
+    public static final double LIKE_FACTOR = 0.1;
+    public static final double COMMENT_FACTOR = 0.2;
+    public static final double DIRECT_MESSAGE_FACTOR = 0.3;
+    public static final double SHARE_FACTOR = 0.5;
+
+    //Constants for PlacardsFragment.java
+    public static final String PF_TAG = "PlacardsFragment.java";
+    public static final String NODE_FOR_ALL_POSTS = "lastPosts";
+    public static final String NODE_FOR_MY_POSTS = "posts";
+    public final static int NUMBER_OF_POSTS_TO_RETRIEVE = 20;//Todo: implement 'Pull Down' 'refresh' and 'add-more'
+    public final static String DATE_STAMP_KEY_NAME = "datestamp";
+
+
 
 }

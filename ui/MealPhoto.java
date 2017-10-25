@@ -30,7 +30,6 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.bumptech.glide.Glide;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -77,7 +76,7 @@ public class MealPhoto extends AppCompatActivity  implements GoogleApiClient.Con
     public FusedLocationProviderClient mFusedLocationProviderClient;
     protected Location mLastLocation;
 
-    private AddressResultReceiver addressResultReceiver;
+    AddressResultReceiver addressResultReceiver;
     ArrayList <String> locationList;
     LocationRecyclerViewAdapter locationRecyclerViewAdapter;
 
@@ -174,7 +173,7 @@ public class MealPhoto extends AppCompatActivity  implements GoogleApiClient.Con
             Log.i(MP_TAG, "IO error in getting Exif data from camera photo");
         }
 
-        if (photoWidth > photoLength) {
+        if ( photoLength > photoWidth ) {
             rotate = true;
         }
         //Create a thumbnail of the received photo and load into Imageview

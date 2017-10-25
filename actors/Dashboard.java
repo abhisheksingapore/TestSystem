@@ -14,6 +14,7 @@ import static me.veganbuddy.veganbuddy.util.DateAndTimeUtils.dateofToday;
 import static me.veganbuddy.veganbuddy.util.DateAndTimeUtils.thisMonthString;
 import static me.veganbuddy.veganbuddy.util.DateAndTimeUtils.thisWeekString;
 import static me.veganbuddy.veganbuddy.util.DateAndTimeUtils.thisYearString;
+import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.getNextPicName;
 
 /**
  * Created by abhishek on 2/9/17.
@@ -64,6 +65,7 @@ public class Dashboard {
         }
         if (startDateOfVegan.equals(DEFAULT_VEGAN_DATE) || startDateOfVegan == null)
             this.startDateOfVegan = dateStampHumanReadable();
+        this.lastPicName = getNextPicName();
         incrementMealsForTheDay(getTodaysCurrentValue());
         incrementMealsForTheMonth(getThisMonthCurrentValue());
         incrementMealsForTheWeek(getThisWeekCurrentValue());

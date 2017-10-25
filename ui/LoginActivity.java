@@ -1,8 +1,13 @@
 package me.veganbuddy.veganbuddy.ui;
 
 
+import android.annotation.TargetApi;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -26,6 +31,7 @@ import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
+import com.google.firebase.crash.FirebaseCrash;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -40,11 +46,13 @@ import me.veganbuddy.veganbuddy.actors.User;
 
 import static me.veganbuddy.veganbuddy.util.Constants.DASHBOARD_NODE;
 import static me.veganbuddy.veganbuddy.util.Constants.LOGIN_TAG;
+import static me.veganbuddy.veganbuddy.util.Constants.NOTIFICATION_CHANNEL_ID;
 import static me.veganbuddy.veganbuddy.util.Constants.PROFILE_NODE;
 import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.mFirebaseAuth;
 import static me.veganbuddy.veganbuddy.util.GlobalVariables.googleApiClient;
 import static me.veganbuddy.veganbuddy.util.GlobalVariables.myDashboard;
 import static me.veganbuddy.veganbuddy.util.GlobalVariables.thisAppUser;
+import static me.veganbuddy.veganbuddy.util.NetworkUtils.internetIsAvailable;
 import static me.veganbuddy.veganbuddy.util.SocialMediaUtils.initializePinterest;
 import static me.veganbuddy.veganbuddy.util.SocialMediaUtils.initializeTwitter;
 
@@ -79,13 +87,39 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
         if (targetUrl != null) {
             Toast.makeText(this, "App Link Target URL: " + targetUrl.toString(), Toast.LENGTH_SHORT).show();
         }
+
+        FirebaseDatabase.getInstance().setPersistenceEnabled(true);
         showProgressBarAndBackgroundImage();
         prepareGoogleAuthComponents();
         createNotificationChannel();
     }
 
-    private void createNotificationChannel() {
+    private void checkInternetConnection() {
+        if (!internetIsAvailable(this)) {
+            Toast.makeText(this, "No internet detected. Please" +
+                    " check your internet connection. And try again", Toast.LENGTH_SHORT).show();
+            updateUI();
+        }
+    }
 
+
+    @TargetApi(26)
+    private void createNotificationChannel() {
+        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            String id = NOTIFICATION_CHANNEL_ID;
+            CharSequence name = getString(R.string.la_notification_channel_name);
+            String desc = getString(R.string.la_notification_channel_description);
+            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+            NotificationChannel notificationChannel = new NotificationChannel(id, name, importance);
+            notificationChannel.setDescription(desc);
+            try {
+                notificationManager.createNotificationChannel(notificationChannel);
+            } catch (NullPointerException NPE) {
+                FirebaseCrash.log("Null Pointer Exception in createNotificationChannel " + NPE.toString());
+                NPE.printStackTrace();
+            }
+        }
     }
 
     @Override
@@ -104,6 +138,7 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
         } else {
             updateUI();
         }
+        checkInternetConnection();
     }
 
     private void prepareGoogleAuthComponents() {
@@ -129,18 +164,26 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
     //Method to update the UI once the currentUser is authenticated either prior to start of
     // the activity or after
     public void updateUI() {
-        if (thisAppUser != null) {
-            launchUserLandingPage();
+        if (thisAppUser != null && internetIsAvailable(this)) {
+            retrieveUserAppData();
         } else {
-            Toast.makeText(this
-                    , "Please Sign In", Toast.LENGTH_SHORT).show();
             hideProgressBarAndBackgroundImage();
+            if (!internetIsAvailable(this)) {
+                Log.e(LOGIN_TAG, "No Internet Connection");
+                Toast.makeText(this
+                        , "Please check your Internet connection and retry Sign In",
+                        Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this
+                        , "Please Sign In", Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
-    //Once currentUser is authenticated, then Launch the next activity
-    public void launchUserLandingPage () {
-        Intent intent = new Intent(this, LandingPage.class);
+    //Once currentUser is authenticated, then Launch the next activity to retrieve all the remaining
+    // user data
+    public void retrieveUserAppData () {
+        Intent intent = new Intent(this, DataRefreshActivity.class);
         startActivity(intent);
     }
 
@@ -153,6 +196,7 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
             case R.id.google_sign_in_button:
                 signInButton.setVisibility(View.GONE);
                 googleSignIn();
+                checkInternetConnection();
                 break;
         }
     }
@@ -178,7 +222,8 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
                 Log.v(LOGIN_TAG, "Google Sign in Successful");
             } else {
                 // Google Sign In failed, update UI appropriately
-                Log.v(LOGIN_TAG, "Google Sign in failed");
+                Log.v(LOGIN_TAG, "Google Sign in failed. Please check your internet connection" +
+                        " and try again");
             }
         }
     }
@@ -242,7 +287,8 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
             public void onDataChange(DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists()) {
                     thisAppUser = dataSnapshot.getValue(User.class);
-                    //to catch the odd condition where some data is there for the user node except FirebaseID
+                    //to catch the odd condition where some data is there for the user node
+                    // except FirebaseID
                     if (thisAppUser.getFireBaseID() == null) {
                         thisAppUser = new User(mFirebaseUser);
                     }
@@ -287,6 +333,9 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
             @Override
             public void onCancelled(DatabaseError databaseError) {
                 Log.e(LOGIN_TAG, "Error in Database Connection" + databaseError.getDetails());
+                Toast.makeText(LoginActivity.this, "Error connecting to Database." +
+                        " Please check your internet connection", Toast.LENGTH_SHORT).show();
+                updateUI();
             }
         });
     }

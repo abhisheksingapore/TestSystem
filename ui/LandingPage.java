@@ -9,6 +9,7 @@ import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
@@ -35,18 +36,14 @@ import com.facebook.share.widget.AppInviteDialog;
 import com.google.android.gms.auth.api.Auth;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
 import com.squareup.picasso.Picasso;
 
 import java.io.File;
 import java.io.IOException;
 
 import me.veganbuddy.veganbuddy.R;
-import me.veganbuddy.veganbuddy.actors.Dashboard;
+import me.veganbuddy.veganbuddy.actors.Post;
+import me.veganbuddy.veganbuddy.actors.Vnotification;
 import me.veganbuddy.veganbuddy.util.BitmapUtils;
 import me.veganbuddy.veganbuddy.util.Constants;
 import me.veganbuddy.veganbuddy.util.DateAndTimeUtils;
@@ -54,23 +51,22 @@ import me.veganbuddy.veganbuddy.util.FirebaseStorageUtils;
 
 import static me.veganbuddy.veganbuddy.util.BitmapUtils.createTempUploadFile;
 import static me.veganbuddy.veganbuddy.util.Constants.CURRENT_USER;
-import static me.veganbuddy.veganbuddy.util.Constants.DASHBOARD_NODE;
 import static me.veganbuddy.veganbuddy.util.Constants.DO_NOT_INCREASE;
 import static me.veganbuddy.veganbuddy.util.Constants.FULL_PHOTO_URI;
 import static me.veganbuddy.veganbuddy.util.Constants.HEART_EMPTY;
 import static me.veganbuddy.veganbuddy.util.Constants.HEART_FULL;
+import static me.veganbuddy.veganbuddy.util.Constants.INBOUND;
 import static me.veganbuddy.veganbuddy.util.Constants.LP_TAG;
+import static me.veganbuddy.veganbuddy.util.Constants.NODE_FOR_ALL_POSTS;
+import static me.veganbuddy.veganbuddy.util.Constants.NODE_FOR_MY_POSTS;
 import static me.veganbuddy.veganbuddy.util.Constants.NO_LIKES;
 import static me.veganbuddy.veganbuddy.util.Constants.ONE_LIKE;
+import static me.veganbuddy.veganbuddy.util.Constants.OUTBOUND;
 import static me.veganbuddy.veganbuddy.util.Constants.REQUEST_IMAGE_CAPTURE;
 import static me.veganbuddy.veganbuddy.util.Constants.app_link_url;
 import static me.veganbuddy.veganbuddy.util.Constants.app_logo;
 import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.mFirebaseAuth;
-import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.retrieveAllPostsData;
-import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.retrieveApplicablePicName;
 import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.retrieveCommentsData;
-import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.retrieveMessageForTheDay;
-import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.retrievePostsData;
 import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.setDashboardData;
 import static me.veganbuddy.veganbuddy.util.GlobalVariables.googleApiClient;
 import static me.veganbuddy.veganbuddy.util.GlobalVariables.myDashboard;
@@ -79,7 +75,9 @@ import static me.veganbuddy.veganbuddy.util.GlobalVariables.thisAppUser;
 
 public class LandingPage extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener,
-        LandingPageFragment.OnFragmentInteractionListener{
+        LandingPageFragment.OnFragmentInteractionListener,
+        VnotificationFragment.OnListFragmentInteractionListener,
+        PlacardsFragment.OnListFragmentInteractionListener{
     //Todo: Implement Landscape view of all the features
 
     //Todo: Implement Vegan Questions - "How many days vegan?", "Fulltime Vegan/PartTime" -
@@ -88,7 +86,7 @@ public class LandingPage extends AppCompatActivity
     private static String mCurrentPhotoPath;
     private static Uri photoUri;
 
-    //instances of Local classes to create the sections and fragments for this view
+    //instances of Local classes to create the sections and fragments for the Landing Page view
     private SectionsPagerAdapter mSectionsPagerAdapter;
     private ViewPager mViewPager;
 
@@ -98,11 +96,22 @@ public class LandingPage extends AppCompatActivity
         setContentView(R.layout.activity_landing_page);
         Toolbar toolbar =  findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        getSupportActionBar().setTitle("");//no Title
+
+
+        toolbar.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                veganBuddyClick (view);
+            }
+        });
 
         final FloatingActionButton fab = findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                Snackbar.make(view,"For best picture, use Camera in Landscape mode", Snackbar.LENGTH_LONG).show();
+                Toast.makeText(getBaseContext(), "Use Camera in LANDSCAPE mode, for best picture" , Toast.LENGTH_LONG).show();
                 takeFoodPhoto();
             }
         });
@@ -117,22 +126,13 @@ public class LandingPage extends AppCompatActivity
         navigationView.setNavigationItemSelectedListener(this);
         createUserProfile();
 
-        // Create the adapter that will return a fragment for each of the
+        // Create the adapters that will return a fragment for each of the
         // primary sections of the activity.
         mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
 
-        // Set up the ViewPager with the sections adapter.
+        // Set up the ViewPagers with the respective sections adapter.
         mViewPager = findViewById(R.id.container_for_fragments);
         mViewPager.setAdapter(mSectionsPagerAdapter);
-
-        if (myDashboard != null) {
-            //retrieve the app Message that will be displayed along with the meal photos
-            retrieveMessageForTheDay(retrieveApplicablePicName());
-            //retrieve posts of the user
-            retrievePostsData();
-            //retrieve posts of the entire "user group"
-            retrieveAllPostsData();
-        }
     }
 
     @Override
@@ -149,8 +149,10 @@ public class LandingPage extends AppCompatActivity
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.three_dots_settings_menu, menu);
+
         return true;
     }
+
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -161,7 +163,10 @@ public class LandingPage extends AppCompatActivity
 
         //noinspection SimplifiableIfStatement
         switch (id) {
-
+            case R.id.notifications:
+                item.setIcon(R.drawable.ic_notifications_gold_24dp);
+                loadNotificationsFragment();
+                break;
             case R.id.refresh:
                 Log.v(LP_TAG, "Refreshing data on user request - manual click");
                 refreshAllFragments();
@@ -182,10 +187,19 @@ public class LandingPage extends AppCompatActivity
         return super.onOptionsItemSelected(item);
     }
 
+    private void loadNotificationsFragment() {
+        mViewPager.setCurrentItem(4);
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
-        if (!myDashboard.todayExistsInDashboard()) {
+        if (myDashboard == null) {
+            //This situation will arise if the app has launched this activity without first retrieving
+            // the myDashboard Data
+            Intent intentLogin = new Intent (this, LoginActivity.class);
+            startActivity(intentLogin);
+        } else if (!myDashboard.todayExistsInDashboard()) {
             Toast.makeText(this, "DATE CHANGED! Refreshing Dashboard...", Toast.LENGTH_LONG).show();
             //This condition will happen when the app was left in onPause() state across
             // local midnight. So if date changes, the dashboard should be refreshed
@@ -204,8 +218,6 @@ public class LandingPage extends AppCompatActivity
         int id = item.getItemId();
         switch (id) {
             case R.id.nav_veganalytics:;
-                break;
-            case R.id.nav_notifications:;
                 break;
             case R.id.nav_manual_entry:;
                 break;
@@ -294,11 +306,11 @@ public class LandingPage extends AppCompatActivity
 
 
     public void createUserProfile () {
-        NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+        NavigationView navigationView = findViewById(R.id.nav_view);
         View headerView = navigationView.getHeaderView(0);
 
         //Set Profile Picture
-        ImageView profilePicView = (ImageView) headerView.findViewById(R.id.userProfilePic);
+        ImageView profilePicView = headerView.findViewById(R.id.userProfilePic);
         try {
             String photoUrl = thisAppUser.getPhotoUrl();
             Picasso.with(getBaseContext()).load(photoUrl).into(profilePicView);
@@ -400,23 +412,45 @@ public class LandingPage extends AppCompatActivity
     @Override
     public void onFragmentInteraction(int position) {
         //Todo: Implement the fragment to activity interaction here
+
     }
 
-    public void heartClick(View view) {
+    //FragmentInteraction Method for the notification fragments
+    @Override
+    public void onListFragmentInteraction(Vnotification item) {
+        //Todo: Implement the fragment to activity interaction here
+
+        Toast.makeText(this, "clicked item is: " + item.getCreatedAt(), Toast.LENGTH_SHORT).show();
+    }
+
+    //FragmentInteraction Method for the new POSTs fragments
+    @Override
+    public void onListFragmentInteraction(Post post, View v, int position) {
+        if (v.getId() == R.id.pi_heart_icon) heartClick(v, post);
+    }
+
+    public void heartClick(View view, Post post) {
         boolean newValue = false;
         int newLikeCount = 0;
         int currentLikeCount;
 
         ImageView heart = view.findViewById(R.id.pi_heart_icon);
+        //the content description of the images stores the text describing whether the clicked
+        // heart is empty or full. Based on that change status
         String heartStatus = heart.getContentDescription().toString();
         RelativeLayout viewParent = (RelativeLayout) view.getParent();
         CardView viewGrandParent = (CardView) viewParent.getParent().getParent();
         TextView textViewUserName = viewGrandParent.findViewById(R.id.pi_profile_name);
+
+        //The firebase Uid is stored in the content description of the Profile Name textview or it
+        // is equal to CURRENT_USER for posts of thisAppUser
         String userFirebaseID = textViewUserName.getContentDescription().toString();
 
         TextView likesCount = viewGrandParent.findViewById(R.id.pi_likes_count);
+        //The datetime unique PostID is stored in the content description on the CardView
         String dateTimeStampID = viewGrandParent.getContentDescription().toString();
 
+        //Show Like count
         String numberofLikes = likesCount.getText().toString();
         switch (numberofLikes) {
             case NO_LIKES: currentLikeCount = 0;
@@ -427,6 +461,7 @@ public class LandingPage extends AppCompatActivity
             break;
         }
 
+        //Update Like count based on the click
         if (heartStatus == HEART_FULL) {
             //implies that currentValue of boolean "iLike" is true;
             newValue = false;
@@ -439,11 +474,17 @@ public class LandingPage extends AppCompatActivity
             newLikeCount = currentLikeCount + 1; //Increase like by 1
         }
 
-
+        //Update Firebase Database
         if(userFirebaseID.equals(CURRENT_USER)) //If Placard belongs to current user listing
         FirebaseStorageUtils.updateIlike (dateTimeStampID, newValue, newLikeCount);
-        else //If placard belongs to ALL POSTS listing
-        FirebaseStorageUtils.updateIlike (dateTimeStampID, newValue, newLikeCount, userFirebaseID);
+        else {//If placard belongs to LAST POSTS listing
+            if (newValue == true)
+            FirebaseStorageUtils.updateMyLikes(dateTimeStampID, newValue, newLikeCount, userFirebaseID);
+
+            if (newValue == false)
+                FirebaseStorageUtils.deleteMyLikes(dateTimeStampID, newValue, newLikeCount,
+                        userFirebaseID, post);
+        }
     }
 
 
@@ -498,15 +539,19 @@ public class LandingPage extends AppCompatActivity
         CharSequence fullsizeImageUriContentDescription = clickedPhoto.getContentDescription();
         if (fullsizeImageUriContentDescription!=null) {
             fullsizeImageUriStr = clickedPhoto.getContentDescription().toString();
+            Intent intentFullSizePhoto = new Intent(this, FullSizePhoto.class);
+            intentFullSizePhoto.putExtra(FULL_PHOTO_URI, fullsizeImageUriStr);
+            startActivity(intentFullSizePhoto);
         }
-        Intent intentFullSizePhoto = new Intent(this, FullSizePhoto.class);
-        intentFullSizePhoto.putExtra(FULL_PHOTO_URI, fullsizeImageUriStr);
-        startActivity(intentFullSizePhoto);
     }
 
     private void refreshAllFragments() {
         Intent intentDataRefresh = new Intent(this, DataRefreshActivity.class);
         startActivity(intentDataRefresh);
+    }
+
+    public void veganBuddyClick(View view) {
+        mViewPager.setCurrentItem(0, true);
     }
 
 
@@ -523,14 +568,24 @@ public class LandingPage extends AppCompatActivity
         @Override
         public Fragment getItem(int position) {
             // getItem is called to instantiate the fragment for the given page.
-            return LandingPageFragment.newInstance(position);
+            switch (position) {
+                case 2: return PlacardsFragment.newInstance(1, NODE_FOR_ALL_POSTS );
+                case 3: return PlacardsFragment.newInstance(1, NODE_FOR_MY_POSTS);
+                case 4:
+                    return VnotificationFragment.newInstance(INBOUND);
+                case 5:
+                    return VnotificationFragment.newInstance(OUTBOUND);
+                default:
+                    return LandingPageFragment.newInstance(position);
+            }
         }
 
 
         @Override
         public int getCount() {
             // Show  total pages.
-            return 4;
+            return 6;
         }
     }
+
 }

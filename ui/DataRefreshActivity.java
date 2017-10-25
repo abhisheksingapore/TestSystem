@@ -1,6 +1,7 @@
 package me.veganbuddy.veganbuddy.ui;
 
 import android.content.Intent;
+import android.icu.util.Freezable;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -14,13 +15,16 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import java.util.ArrayList;
+
 import me.veganbuddy.veganbuddy.R;
 import me.veganbuddy.veganbuddy.actors.Dashboard;
+import me.veganbuddy.veganbuddy.actors.Vnotification;
 
 import static me.veganbuddy.veganbuddy.util.Constants.DASHBOARD_NODE;
 import static me.veganbuddy.veganbuddy.util.Constants.LP_TAG;
-import static me.veganbuddy.veganbuddy.util.Constants.MAX_WAIT_TIME;
-import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.dashboardDataUpdated;
+import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.retrieveApplicablePicName;
+import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.retrieveMessageForTheDay;
 import static me.veganbuddy.veganbuddy.util.GlobalVariables.myDashboard;
 import static me.veganbuddy.veganbuddy.util.GlobalVariables.thisAppUser;
 
@@ -40,6 +44,17 @@ public class DataRefreshActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
         addDashboardListener();
+        if (myDashboard != null) {
+            //retrieve the app Message that will be displayed along with the meal photos
+            retrieveMessageForTheDay(retrieveApplicablePicName());
+            //make the Firebase Database persistent. So even if the WiFi connection is lost the
+            // user can continue to work
+        } else {
+            //This situation will arise if the app has launched this activity without first retrieving
+            // the myDashboard Data
+            Intent intentLogin = new Intent (this, LoginActivity.class);
+            startActivity(intentLogin);
+        }
     }
 
     public void reloadLandingPage(boolean success){
@@ -72,7 +87,9 @@ public class DataRefreshActivity extends AppCompatActivity {
             public void onCancelled(DatabaseError databaseError) {
                 Log.e(LP_TAG, "Error in retrieving myDashboard data from Firebase" +
                         databaseError.getDetails());
+                reloadLandingPage(false);
             }
         });
     }
+
 }

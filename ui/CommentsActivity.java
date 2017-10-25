@@ -11,7 +11,7 @@ import android.widget.ImageView;
 import android.widget.Toast;
 
 
-import com.bumptech.glide.Glide;
+import com.squareup.picasso.Picasso;
 
 import me.veganbuddy.veganbuddy.R;
 import static me.veganbuddy.veganbuddy.util.GlobalVariables.thisAppUser;
@@ -36,7 +36,7 @@ public class CommentsActivity extends AppCompatActivity {
         //Load the header photo into the ImageView. Comments are associated with this picture
         String photoUriString = getIntent().getStringExtra("ImageURI");
         Uri photoUri = Uri.parse(photoUriString);
-        Glide.with(this).load(photoUri).into(commentPhoto);
+        Picasso.with(this).load(photoUri).into(commentPhoto);
 
         //Setup the recyclerView with all the comments for this photo
         LinearLayoutManager commentsLayoutManager = new LinearLayoutManager(this);
