@@ -8,7 +8,6 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.zip.Inflater;
 
 import me.veganbuddy.veganbuddy.R;
 
@@ -28,7 +27,7 @@ public class LocationRecyclerViewAdapter
     @Override
     public LocationViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View itemView = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.location_item, parent, false);
+                .inflate(R.layout.item_location, parent, false);
         return new LocationViewHolder(itemView);
     }
 

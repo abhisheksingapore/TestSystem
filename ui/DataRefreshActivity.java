@@ -67,9 +67,17 @@ public class DataRefreshActivity extends AppCompatActivity {
 
     //========== Attaching Firebase Listeners ============
     private  void setProperDatabaseReference(){
-        String username = thisAppUser.getFireBaseID();
-        mDatabase = FirebaseDatabase.getInstance();
-        myRef = mDatabase.getReference(username);
+        if (thisAppUser!=null) {
+            String username = thisAppUser.getFireBaseID();
+            mDatabase = FirebaseDatabase.getInstance();
+            myRef = mDatabase.getReference(username);
+        } else {
+            //This situation will arise if the app has launched this activity without first retrieving
+            // thisAppUser Data or it crashed on this activity and AndroidOS automatically tried
+            // to resume it
+            Intent intentLogin = new Intent (this, LoginActivity.class);
+            startActivity(intentLogin);
+        }
     }
 
     private void addDashboardListener() {

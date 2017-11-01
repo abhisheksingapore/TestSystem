@@ -20,7 +20,7 @@ public class DateAndTimeUtils {
 
     //Variable to measure the meal type based on time of the day
     private static int breakfast_start = 6;
-    private static int breakfast_end = 10;
+    private static int breakfast_end = 11;
     private static int lunch_start = 12;
     private static int lunch_end = 15;
     private static int dinner_start = 18;

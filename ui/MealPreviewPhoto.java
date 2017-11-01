@@ -16,10 +16,14 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.common.GooglePlayServicesNotAvailableException;
+import com.google.android.gms.common.GooglePlayServicesRepairableException;
+import com.google.android.gms.location.places.ui.PlacePicker;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.crash.FirebaseCrash;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
@@ -42,6 +46,7 @@ import static me.veganbuddy.veganbuddy.util.Constants.SELECTED_LOCATION;
 import static me.veganbuddy.veganbuddy.util.Constants.SHARETOFACEBOOK;
 import static me.veganbuddy.veganbuddy.util.Constants.SHARETOPINTEREST;
 import static me.veganbuddy.veganbuddy.util.Constants.SHARETOTWITTER;
+import static me.veganbuddy.veganbuddy.util.Constants.STATS_IMAGE_URI;
 import static me.veganbuddy.veganbuddy.util.Constants.VEGANPHILOSOPHY;
 import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.getAppMessage;
 import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.getNextPicName;
@@ -56,7 +61,7 @@ public class MealPreviewPhoto extends AppCompatActivity {
     private Uri imageURI;
     private Uri screenShotURI;
     private Uri screenshotThumbURI;
-    private String imageFileName;
+    private String mealPhotoName;
     public boolean uploadToFaceBook;
     public boolean tweetThisPic;
     public boolean pinThisPic;
@@ -83,6 +88,7 @@ public class MealPreviewPhoto extends AppCompatActivity {
                 uploadPhotoAndDashboardData();
             }
         });
+
     }
 
     private void saveScreenShot() {
@@ -93,12 +99,12 @@ public class MealPreviewPhoto extends AppCompatActivity {
         viewToSave.draw(canvas);
 
         //Create a temporary file to store the bitmap and retrieve the URI
-        File tempImageFile = createTempImageFile(bitmapSS, getExternalFilesDir(Environment.DIRECTORY_PICTURES));
+        File tempImageFile = createTempImageFile(bitmapSS);
         if (tempImageFile!=null) {
             screenShotURI = Uri.fromFile(tempImageFile);
         } else Toast.makeText(this, "Error while creating Screenshot file", Toast.LENGTH_SHORT).show();
 
-        File tempImageThumbFile = createTempThumbFile(bitmapSS, getExternalFilesDir(Environment.DIRECTORY_PICTURES));
+        File tempImageThumbFile = createTempThumbFile(bitmapSS);
         if (tempImageThumbFile!=null) {
             screenshotThumbURI = Uri.fromFile(tempImageThumbFile);
         } else Toast.makeText(this, "Error while creating Screenshot Thumbnail file", Toast.LENGTH_SHORT).show();
@@ -109,25 +115,8 @@ public class MealPreviewPhoto extends AppCompatActivity {
         super.onStart();
         ImageView imageView = findViewById(R.id.iv_preview_food_image);
         imageViewStatsPic = findViewById(R.id.cmpp_iv_preview_stats);
-
         textViewAppMessage = findViewById(R.id.cmpp_tv_app_message);
-        String appMessage = getAppMessage();
-        if (appMessage!=null) {
-            textViewAppMessage.setText(appMessage);
-            StorageReference statsPicReference = getStatsPicReference(getNextPicName());
-
-            final Task <Uri> uriTask = statsPicReference.getDownloadUrl();
-            uriTask.addOnCompleteListener(new OnCompleteListener<Uri>() {
-                @Override
-                public void onComplete(@NonNull Task<Uri> task) {
-                    Picasso.with(getBaseContext())
-                            .load(task.getResult())
-                            .into(imageViewStatsPic);
-                }
-            });
-        } else {
-            textViewAppMessage.setText("Vegetarianism stops animal killing for food");
-        }
+        Uri uriStatsImage = null;
 
         Bundle extras = getIntent().getExtras();
         try {
@@ -136,14 +125,28 @@ public class MealPreviewPhoto extends AppCompatActivity {
             uploadToFaceBook = extras.getBoolean(SHARETOFACEBOOK);
             tweetThisPic = extras.getBoolean(SHARETOTWITTER);
             pinThisPic = extras.getBoolean(SHARETOPINTEREST);
+            uriStatsImage = Uri.parse(extras.getString(STATS_IMAGE_URI));
         } catch (NullPointerException NPE) {
             NPE.printStackTrace();
-            Log.e(MP_CLASS_TAG, "error in retrieving extras from the intent that created the activity");
+            FirebaseCrash.log("error in retrieving extras from the intent that created this " +
+                    "activity");
+            Log.e(MP_CLASS_TAG, "error in retrieving extras from the intent that created this" +
+                    " activity");
         }
 
-        Uri thumbnailImageURI = BitmapUtils.photoThumbnailUri;
+        String appMessage = getAppMessage();
+        if (appMessage!=null && uriStatsImage!=null) {
+            textViewAppMessage.setText(appMessage);
+            Picasso.with(this)
+                    .load(uriStatsImage)
+                    .into(imageViewStatsPic);
+        }else {
+            textViewAppMessage.setText("Vegetarianism stops animal killing for food");
+        }
+
+        Uri thumbnailImageURI = BitmapUtils.getPhotoThumbnailUri();
         imageURI = BitmapUtils.getPhotoUri();
-        imageFileName = BitmapUtils.getImageFileName();
+        mealPhotoName = BitmapUtils.getMealPhotoName();
 
         Picasso.with(this).load(thumbnailImageURI).into(imageView);
         TextView textViewComment = findViewById(R.id.tv_preview_comments);
@@ -226,15 +229,15 @@ public class MealPreviewPhoto extends AppCompatActivity {
     }
 
      private String uniqueImagePath() {
-         return thisAppUser.getFireBaseID()+ FIREBASE_FULL_IMAGE_FOLDER + imageFileName;
+         return thisAppUser.getFireBaseID()+ FIREBASE_FULL_IMAGE_FOLDER + mealPhotoName;
      }
 
     private String uniqueThumbnailPath() {
-        return thisAppUser.getFireBaseID()+ FIREBASE_THUMBNAIL_FOLDER + imageFileName;
+        return thisAppUser.getFireBaseID()+ FIREBASE_THUMBNAIL_FOLDER + mealPhotoName;
     }
 
     private String uniqueScreenShotPath() {
-        return thisAppUser.getFireBaseID() + FIREBASE_SCREENSHOT_FOLDER + imageFileName;
+        return thisAppUser.getFireBaseID() + FIREBASE_SCREENSHOT_FOLDER + mealPhotoName;
     }
 
 }

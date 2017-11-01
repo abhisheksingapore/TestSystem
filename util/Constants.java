@@ -24,9 +24,10 @@ public final class Constants {
 
     //Constants for BitmapUtils.Java
     public static final String FILE_PROVIDER_AUTHORITY = "me.veganbuddy.veganbuddy.fileprovider";
+    public static final String BU_TAG = "BitmapUtils.java";
 
     //Constants for Landingpage.Java
-    public static final int REQUEST_IMAGE_CAPTURE = 1;
+    public static final int UPLOAD_PICTURE_MANUALLY = 1;
     public static final String LP_TAG = "LandingPage.Java";
     public static final String CURRENT_USER = "currentUserPost";
     public static final String HEART_FULL = "heart full";
@@ -56,6 +57,9 @@ public final class Constants {
     public static final int LOCATION_PERMITTED = 0;
     public static final int SHOW_EDIT_TEXT = 0;
     public static final int HIDE_EDIT_TEXT = 1;
+    public static final int SHOW_PROGRESS_BAR = 2;
+    public static final int SHOW_MEAL_PHOTO = 3;
+
 
     //Constants for MealPreviewPhoto.Java
     public static final String MP_CLASS_TAG = "MealPreviewPhoto";
@@ -70,11 +74,12 @@ public final class Constants {
     public static final String SHARETOFACEBOOK = "Facebook";
     public static final String SHARETOPINTEREST = "Pin";
     public static final String SHARETOTWITTER = "Twitter";
+    public static final String STATS_IMAGE_URI = "StatsImageUri";
 
     //Constants for FetchAddressIntentService.java
     public static final int SUCCESS_RESULT = 0;
     public static final int FAILURE_RESULT = 1;
-    public static final int NUMBER_OF_ADDRESSES_TO_RETRIEVE = 5;
+    public static final int NUMBER_OF_ADDRESSES_TO_RETRIEVE = 10;
     public static final String PACKAGE_NAME = "me.veganbuddy.veganbuddy.services";
     public static final String LOCATION_DATA_EXTRA = PACKAGE_NAME + ".LOCATION_DATA_EXTRA";
     public static final String RESULT_DATA_KEY = PACKAGE_NAME + ".RESULT_DATA_KEY";
@@ -162,6 +167,21 @@ public final class Constants {
     public final static int NUMBER_OF_POSTS_TO_RETRIEVE = 20;//Todo: implement 'Pull Down' 'refresh' and 'add-more'
     public final static String DATE_STAMP_KEY_NAME = "datestamp";
 
+    //Constants for CameraActivity.java
+    public static final String CA_TAG = "CameraActivity";
 
+    public static final int PICTURES_DIRECTORY_PERMISSION = 939;
+    public static final String VEGAN_BUDDY_FOLDER = "VeganBuddy";
 
+    public static final String FLASH_SETTING = "Flash Setting";
+    public static final String FLASH_ON_MSG = "flashOn" ;
+    public static final String FLASH_OFF_MSG = "flashOff";
+    public static final String SHUTTER_SOUND_SETTING = "Sound Setting";
+    public static final String SHUTTER_SOUND_ON_MSG = "SoundOn" ;
+    public static final String SHUTTER_SOUND_OFF_MSG = "SoundOff";
+    public static final int HIGH_QUALITY = 100;
+    public static final int LOW_QUALITY = 50;
+
+    public static final int SHOW_CAMERA = 0;
+    public static final int SHOW_PROGRESS = 1;
 }

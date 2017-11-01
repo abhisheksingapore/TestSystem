@@ -3,14 +3,25 @@ package me.veganbuddy.veganbuddy.util;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
+import android.media.ExifInterface;
 import android.media.ThumbnailUtils;
 import android.net.Uri;
+import android.os.Environment;
 import android.util.Log;
 
+import com.google.firebase.crash.FirebaseCrash;
+
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
+
+import static me.veganbuddy.veganbuddy.util.Constants.BU_TAG;
+import static me.veganbuddy.veganbuddy.util.Constants.MP_TAG;
+import static me.veganbuddy.veganbuddy.util.Constants.VEGAN_BUDDY_FOLDER;
 
 /**
  * Created by abhishek on 31/8/17.
@@ -18,18 +29,22 @@ import java.io.IOException;
 
 public class BitmapUtils {
 
-    public static String photoURL;
-    public static Uri photoUri;
-    public static String photoPath;
+    //Folder to store all the images of this app
+    private static File veganBuddyFolder;
 
-    public static String imageFileName;
+    //Variables for MealPhoto
+    private static String photoURL;
+    private static Uri photoUri;
+    private static String photoPath;
+    private static String mealPhotoName;
 
-    public static String photoThumbnailURL;
-    public static String photoThumbnailPath;
-    public static Uri photoThumbnailUri;
+    //Variables for MealPhoto thumbnail
+    private static String photoThumbnailURL;
+    private static Uri photoThumbnailUri;
 
-    public static String screenShotURL;
-    public static File screenShotFile;
+    //Variables for MealPhoto Screenshot
+    private static String screenShotURL;
+    private static File screenShotFile;
 
     public static String getPhotoURL() {
         return photoURL;
@@ -47,6 +62,14 @@ public class BitmapUtils {
         BitmapUtils.photoThumbnailURL = photoThumbnailURL;
     }
 
+    public static Uri getPhotoThumbnailUri() {
+        return photoThumbnailUri;
+    }
+
+    public static void setPhotoThumbnailUri(Uri photoThumbnailUri) {
+        BitmapUtils.photoThumbnailUri = photoThumbnailUri;
+    }
+
     public static String getScreenShotURL() {
         return screenShotURL;
     }
@@ -59,6 +82,10 @@ public class BitmapUtils {
         BitmapUtils.photoPath = photoPath;
     }
 
+    public static String getPhotoPath() {
+        return photoPath;
+    }
+
     public static Uri getPhotoUri() {
         return photoUri;
     }
@@ -67,157 +94,230 @@ public class BitmapUtils {
         photoUri = mUri;
     }
 
-    public static String getImageFileName() {
-        return imageFileName;
+
+    public static void setMealPhotoName(String mealPhotoName) {
+        BitmapUtils.mealPhotoName = mealPhotoName;
     }
 
-    public static void setImageFileName(String imageFileName) {
-        BitmapUtils.imageFileName = imageFileName;
+    public static String getMealPhotoName() {
+        return mealPhotoName;
     }
 
-    public static File createThumbnail(String filePath, File fileDirectory, boolean rotate) {
+    public static File getVeganBuddyFolder() {
+        return veganBuddyFolder;
+    }
 
-        //Create the thumbnail
-        Bitmap bitmap = BitmapFactory.decodeFile(filePath);
-        int width = bitmap.getWidth() / 5; //Thumbnail is 20% of the original image size
-        int height = bitmap.getHeight() / 5;
-        Bitmap thumbNail = ThumbnailUtils.extractThumbnail(bitmap, width, height);
+    public static void setVeganBuddyFolder(File veganBuddyFolder) {
+        BitmapUtils.veganBuddyFolder = veganBuddyFolder;
+    }
 
-        if (rotate) {
-            Matrix matrix = new Matrix();
-            matrix.postRotate(90);
-            thumbNail = Bitmap.createBitmap(thumbNail,0,0,width,height,matrix,true);
-        }
+    static File getScreenShotFile(){
+        return screenShotFile;
+    }
 
-        //Create a file to save the thumbnail into
-        File thumbnailFile = null;
+
+
+    public static Uri createMealPhotoFile(byte[] jpeg) {
+
         try {
-            thumbnailFile = createThumbnailFile(fileDirectory);
-        } catch (IOException ioe) {
-            Log.e("BitmapUtils Error", "IO Exception happened while creating the file for saving the image");
-            ioe.printStackTrace();
+            //First create file in the local drive of the phone
+            File photoFile = null;
+            String mealType = DateAndTimeUtils.getMealTypeBasedOnTimeOfTheDay();
+            String timeStamp = DateAndTimeUtils.dateTimeStamp();
+            String photoFileName = mealType + timeStamp;
+            photoFile = File.createTempFile(photoFileName, ".jpg", veganBuddyFolder);
+            setMealPhotoName(photoFile.getName());
+
+            //get Absolute Path of the created file and save it here
+            String currentPhotoPath = photoFile.getAbsolutePath();
+            setPhotoPath(currentPhotoPath);
+
+            //then save byte[]jpeg into file
+            FileOutputStream fos = new FileOutputStream(currentPhotoPath);
+            fos.write(jpeg);
+            fos.close();
+
+            //get PhotoURI and save in local app variable
+            Uri thisPhotoUri = Uri.fromFile(photoFile);
+            BitmapUtils.setPhotoUri(thisPhotoUri);
+
+            return BitmapUtils.getPhotoUri();
+        } catch (IOException | NullPointerException | IllegalArgumentException exception) {
+            FirebaseCrash.log(BU_TAG + exception.getMessage());
+            Log.e(BU_TAG, exception.getMessage());
         }
-        if (thumbnailFile != null) {
+        return null;
+    }
+
+    public static Uri createMealPhotoFileFromUri(InputStream inputStream) {
+        if (veganBuddyFolderExists()) {
             try {
-                //Save the created bitmap thumbnail into the created temp file;
-                FileOutputStream fos = new FileOutputStream(thumbnailFile);
-                thumbNail.compress(Bitmap.CompressFormat.JPEG, 90, fos);
+                //First create file in the local drive of the phone
+                File photoFile = null;
+                String mealType = DateAndTimeUtils.getMealTypeBasedOnTimeOfTheDay();
+                String timeStamp = DateAndTimeUtils.dateTimeStamp();
+                String photoFileName = mealType + timeStamp;
+                photoFile = File.createTempFile(photoFileName, ".jpg", veganBuddyFolder);
+                setMealPhotoName(photoFile.getName());
+
+                //get Absolute Path of the created file and save it here
+                String currentPhotoPath = photoFile.getAbsolutePath();
+                setPhotoPath(currentPhotoPath);
+
+                //then save input stream into output stream
+                FileOutputStream fos = new FileOutputStream(currentPhotoPath);
+                IOUtils.copy(inputStream, fos);
+                inputStream.close();
                 fos.close();
-            } catch (FileNotFoundException fnfe) {
-                Log.e("BitmapUtils Error", "Output Thumbnail file not found");
-                fnfe.printStackTrace();
-            } catch (IOException ioe) {
-                Log.e("BitmapUtils Error", "IO Exception happened while saving thumbnail to temp file");
-                ioe.printStackTrace();
+
+                //get PhotoURI and save in local app variable
+                Uri thisPhotoUri = Uri.fromFile(photoFile);
+                BitmapUtils.setPhotoUri(thisPhotoUri);
+                return BitmapUtils.getPhotoUri();
+            } catch (IOException | NullPointerException | IllegalArgumentException exception) {
+                FirebaseCrash.log(BU_TAG + exception.getMessage());
+                Log.e(BU_TAG, exception.getMessage());
             }
-            photoThumbnailPath = thumbnailFile.getAbsolutePath();
         }
-        return thumbnailFile;
+        return null;
     }
 
-    public static File createThumbnailFile(File fileDirectory) throws IOException {
-        File photoFile = null;
-        String photoFileName = "thumbnail";
-        photoFile = File.createTempFile(photoFileName, ".jpg", fileDirectory);
-        return photoFile;
+    public static void createThumbnail() {
+
+        try {
+            //Create the thumbnail bitmap
+            Bitmap bitmap = BitmapFactory.decodeFile(getPhotoPath());
+            int width = bitmap.getWidth();
+            int height = bitmap.getHeight();
+            Bitmap thumbNail = ThumbnailUtils.extractThumbnail(bitmap, width, height);
+
+            //check if photo needs to rotate for correct alignment with other View Objects
+            boolean rotate = BitmapUtils.shouldRotate(getPhotoPath());
+            if (rotate) {
+                Matrix matrix = new Matrix();
+                matrix.postRotate(90);
+                thumbNail = Bitmap.createBitmap(thumbNail, 0, 0, width, height, matrix, true);
+            }
+
+            //Create a file to save the thumbnail into
+            File thumbnailFile = null;
+
+            String photoFileName = "thumbnail";
+            //make a JPEG to compress size
+            thumbnailFile = File.createTempFile(photoFileName, ".jpg", veganBuddyFolder);
+            //Save the created bitmap thumbnail into the created temp file;
+            FileOutputStream fos = new FileOutputStream(thumbnailFile);
+            //make a low res JPEG to compress size
+            thumbNail.compress(Bitmap.CompressFormat.JPEG, 90, fos);
+            fos.close();
+
+            //save thumbnail URI in BitmapUtils
+            Uri photoThumbnailUri = Uri.fromFile(thumbnailFile);
+            setPhotoThumbnailUri(photoThumbnailUri);
+
+        }catch (IOException |NullPointerException | IllegalArgumentException exception) {
+            Log.e(BU_TAG, "Error creating Thumbnail file");
+            exception.printStackTrace();
+        }
     }
 
-    public static File createTempImageFile(Bitmap bitmapSS, File fileDirectory) {
+    private static boolean shouldRotate(String mealPhotoPath) {
+        int photoLength = -939;
+        int photoWidth = - 939;
+        boolean rotate = false;
+        try {
+            ExifInterface exifInterface = new ExifInterface(mealPhotoPath);
+            photoLength = exifInterface.getAttributeInt(ExifInterface.TAG_IMAGE_LENGTH, -939);
+            photoWidth = exifInterface.getAttributeInt(ExifInterface.TAG_IMAGE_WIDTH, -939);
+        } catch (IOException IOE) {
+            IOE.printStackTrace();
+            Log.i(MP_TAG, "IO error in getting Exif data from camera photo");
+        }
+
+        if ( photoLength > photoWidth ) {
+            rotate = true;
+        }
+        return rotate;
+    }
+
+    public static File createTempImageFile(Bitmap bitmapSS) {
         //Create a temporary File
         File tempFile = null;
         String tempFileName = "veganBuddyTempSS";
 
         try {
-            tempFile = File.createTempFile(tempFileName, ".png", fileDirectory);
-        } catch (IOException IOE) {
-            Log.e("BitmapUtils Error", "IO Exception happened while creating the file for saving the Screenshot image");
-            IOE.printStackTrace();
-        }
-
-        if(tempFile!=null) {
-            try {
-                FileOutputStream fileOutputStream =
-                        new FileOutputStream(tempFile);
-                bitmapSS.compress(Bitmap.CompressFormat.PNG, 100, fileOutputStream);
-                fileOutputStream.close();
-            } catch (IOException IOE) {
-                Log.e("BitmapUtils Error", "IO Exception happened while saving Screenshot image to temp file");
-                IOE.printStackTrace();
-            } catch (NullPointerException NPE) {
-                NPE.printStackTrace();
+            tempFile = File.createTempFile(tempFileName, ".png", veganBuddyFolder);
+            FileOutputStream fileOutputStream =
+                    new FileOutputStream(tempFile);
+            bitmapSS.compress(Bitmap.CompressFormat.PNG, 100, fileOutputStream);
+            fileOutputStream.close();
+            } catch (IOException | NullPointerException exception) {
+                Log.e(BU_TAG, "Exception while saving Screenshot image to temp file");
+                exception.printStackTrace();
             }
-        }
         screenShotFile = tempFile; //Saving to a local file name for use in Twitter Upload later
 
         return tempFile;
     }
 
-    public static File createTempThumbFile(Bitmap bitmapSS, File fileDirectory) {
+    public static File createTempThumbFile(Bitmap bitmapSS) {
         //Create a temporary File
         File tempThumbFile = null;
         String tempThumbFileName = "veganBuddyTempThumbSS";
         Bitmap tempThumbBitmap = ThumbnailUtils.extractThumbnail(bitmapSS,
                 bitmapSS.getWidth()/2, bitmapSS.getHeight()/2);
-
         try {
-            tempThumbFile = File.createTempFile(tempThumbFileName, ".jpg", fileDirectory);
-        } catch (IOException IOE) {
-            Log.e("BitmapUtils Error", "IO Exception happened while creating the file for saving the Screenshot image");
-            IOE.printStackTrace();
-        }
-
-        if(tempThumbFile!=null) {
-            try {
-                FileOutputStream fileOutputStream =
+            tempThumbFile = File.createTempFile(tempThumbFileName, ".jpg", veganBuddyFolder);
+            FileOutputStream fileOutputStream =
                         new FileOutputStream(tempThumbFile);
-                tempThumbBitmap.compress(Bitmap.CompressFormat.JPEG, 90, fileOutputStream);
-                fileOutputStream.close();
-            } catch (IOException IOE) {
-                Log.e("BitmapUtils Error", "IO Exception happened while saving Screenshot image to temp file");
-                IOE.printStackTrace();
-            } catch (NullPointerException NPE) {
-                NPE.printStackTrace();
-            }
+            tempThumbBitmap.compress(Bitmap.CompressFormat.JPEG, 90, fileOutputStream);
+            fileOutputStream.close();
+        } catch (IOException | NullPointerException exception) {
+            Log.e("BitmapUtils Error", "IO Exception happened while saving Screenshot image to temp file");
+            exception.printStackTrace();
         }
         return tempThumbFile;
     }
 
 
-    public static File createTempUploadFile(Bitmap bitmapUpload, File fileDirectory) {
+    public static File createTempUploadFile(Bitmap bitmapUpload) {
         //Create a temporary File
         File tempThumbFile = null;
         String tempThumbFileName = "veganBuddyTempUpload";
 
         try {
-            tempThumbFile = File.createTempFile(tempThumbFileName, ".jpg", fileDirectory);
-        } catch (IOException IOE) {
-            Log.e("BitmapUtils Error", "IO Exception happened while creating the file for saving the Screenshot image");
-            IOE.printStackTrace();
-        }
-
-        if(tempThumbFile!=null) {
-            try {
+            tempThumbFile = File.createTempFile(tempThumbFileName, ".jpg", veganBuddyFolder);
                 FileOutputStream fileOutputStream =
                         new FileOutputStream(tempThumbFile);
                 bitmapUpload.compress(Bitmap.CompressFormat.JPEG, 90, fileOutputStream);
                 fileOutputStream.close();
-            } catch (IOException IOE) {
-                Log.e("BitmapUtils Error", "IO Exception happened while saving Screenshot image to temp file");
-                IOE.printStackTrace();
-            } catch (NullPointerException NPE) {
-                NPE.printStackTrace();
-            }
+            } catch (IOException | NullPointerException exception) {
+            Log.e("BitmapUtils Error", "IO Exception happened while saving Screenshot image to temp file");
+            exception.printStackTrace();
         }
         return tempThumbFile;
     }
 
-    public static File getScreenShotFile(){
-        return screenShotFile;
+    public static void deleteFiles() {
+        try {
+            if (veganBuddyFolderExists()) FileUtils.cleanDirectory(veganBuddyFolder);
+        } catch (IOException IOE){
+            FirebaseCrash.log(BU_TAG + "error caught\n\n" + IOE.getMessage());
+            IOE.printStackTrace();
+        }
     }
 
-    public static String getFileNameSansExtension(String fileNameWithExtension) {
-         return fileNameWithExtension.substring(0, fileNameWithExtension.lastIndexOf("."));
+    public static boolean veganBuddyFolderExists() {
+        veganBuddyFolder = new File(Environment
+                .getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+                + File.separator
+                + VEGAN_BUDDY_FOLDER);
+
+        //Check if VeganBuddy Picture Folder exists inside the default Pictures Directory
+        if (veganBuddyFolder.exists()) return true;
+
+        //if not, then  create the VeganBuddy Picture Folder and return the status of mkdirs()
+        return veganBuddyFolder.mkdirs();
+
     }
-
-
 }

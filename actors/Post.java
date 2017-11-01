@@ -4,6 +4,7 @@ import android.net.Uri;
 
 import java.security.PublicKey;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import me.veganbuddy.veganbuddy.util.DateAndTimeUtils;
@@ -22,7 +23,7 @@ public class Post {
     private String veganPhilosophyText;
     private String locationText;
     private int likesCount;
-    private Map<String, String> likedMe = new HashMap<>();
+    private Map<String, PostFan> myFans = new HashMap<>();
     private int commentsCount;
     private boolean iLoveFlag;
     private boolean hasComments;
@@ -34,7 +35,7 @@ public class Post {
     public Post (String userPicUri, String username, String mealphoto, String dtStamp,
                  String mealThumb, String screenShot, String veganText, String locationText,
                  int likecount, boolean loveflg, boolean comments, int commentsCount,
-                 Map<String, String> whoLikedThisPost) {
+                 Map<String, PostFan> whoLikedThisPost) {
         this.userPhotoUri = userPicUri;
         this.veganPhilosophyText = veganText;
         this.datestamp = dtStamp;
@@ -47,7 +48,7 @@ public class Post {
         this.iLoveFlag = loveflg;
         this.hasComments = comments;
         this.commentsCount = commentsCount;
-        this.likedMe = whoLikedThisPost;
+        this.myFans = whoLikedThisPost;
     }
 
     public String getUserPhotoUri() {
@@ -98,8 +99,8 @@ public class Post {
         return locationText;
     }
 
-    public Map<String, String> getLikedMe() {
-        return likedMe;
+    public Map<String, PostFan> getMyFans() {
+        return myFans;
     }
 
     public void setLikesCount(int likesCount) {
@@ -107,7 +108,7 @@ public class Post {
     }
 
     public Post deleteLike(String userFirebaseIDphotoUrl) {
-        this.likedMe.remove(userFirebaseIDphotoUrl);
+        this.myFans.remove(userFirebaseIDphotoUrl);
         return this;
     }
 }

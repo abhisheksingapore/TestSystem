@@ -6,14 +6,11 @@ import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
-import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
-import android.support.v4.content.FileProvider;
 import android.support.v4.view.ViewPager;
 import android.support.v7.widget.CardView;
 import android.util.Log;
@@ -36,17 +33,17 @@ import com.facebook.share.widget.AppInviteDialog;
 import com.google.android.gms.auth.api.Auth;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
+import com.google.firebase.crash.FirebaseCrash;
 import com.squareup.picasso.Picasso;
 
 import java.io.File;
-import java.io.IOException;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
 
 import me.veganbuddy.veganbuddy.R;
 import me.veganbuddy.veganbuddy.actors.Post;
 import me.veganbuddy.veganbuddy.actors.Vnotification;
 import me.veganbuddy.veganbuddy.util.BitmapUtils;
-import me.veganbuddy.veganbuddy.util.Constants;
-import me.veganbuddy.veganbuddy.util.DateAndTimeUtils;
 import me.veganbuddy.veganbuddy.util.FirebaseStorageUtils;
 
 import static me.veganbuddy.veganbuddy.util.BitmapUtils.createTempUploadFile;
@@ -62,7 +59,7 @@ import static me.veganbuddy.veganbuddy.util.Constants.NODE_FOR_MY_POSTS;
 import static me.veganbuddy.veganbuddy.util.Constants.NO_LIKES;
 import static me.veganbuddy.veganbuddy.util.Constants.ONE_LIKE;
 import static me.veganbuddy.veganbuddy.util.Constants.OUTBOUND;
-import static me.veganbuddy.veganbuddy.util.Constants.REQUEST_IMAGE_CAPTURE;
+import static me.veganbuddy.veganbuddy.util.Constants.UPLOAD_PICTURE_MANUALLY;
 import static me.veganbuddy.veganbuddy.util.Constants.app_link_url;
 import static me.veganbuddy.veganbuddy.util.Constants.app_logo;
 import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.mFirebaseAuth;
@@ -82,9 +79,6 @@ public class LandingPage extends AppCompatActivity
 
     //Todo: Implement Vegan Questions - "How many days vegan?", "Fulltime Vegan/PartTime" -
     // to Calculate the number of animals saved before starting to use the app
-
-    private static String mCurrentPhotoPath;
-    private static Uri photoUri;
 
     //instances of Local classes to create the sections and fragments for the Landing Page view
     private SectionsPagerAdapter mSectionsPagerAdapter;
@@ -110,8 +104,6 @@ public class LandingPage extends AppCompatActivity
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Snackbar.make(view,"For best picture, use Camera in Landscape mode", Snackbar.LENGTH_LONG).show();
-                Toast.makeText(getBaseContext(), "Use Camera in LANDSCAPE mode, for best picture" , Toast.LENGTH_LONG).show();
                 takeFoodPhoto();
             }
         });
@@ -194,9 +186,10 @@ public class LandingPage extends AppCompatActivity
     @Override
     protected void onResume() {
         super.onResume();
-        if (myDashboard == null) {
+        if (myDashboard == null ||  thisAppUser == null) {
             //This situation will arise if the app has launched this activity without first retrieving
-            // the myDashboard Data
+            // the myDashboard Data or it crashed on this activity and AndroidOS automatically tried
+            // to resume it
             Intent intentLogin = new Intent (this, LoginActivity.class);
             startActivity(intentLogin);
         } else if (!myDashboard.todayExistsInDashboard()) {
@@ -219,11 +212,17 @@ public class LandingPage extends AppCompatActivity
         switch (id) {
             case R.id.nav_veganalytics:;
                 break;
-            case R.id.nav_manual_entry:;
+            case R.id.nav_manual_entry:
+                chooseFromPicturesFolder();
                 break;
             case R.id.nav_messages:;
                 break;
             case R.id.nav_meal_mate:;
+                break;
+            case R.id.nav_delete:
+                BitmapUtils.deleteFiles();
+                Toast.makeText(this, "All Vegan Buddy photos deleted from your phone",
+                        Toast.LENGTH_SHORT).show();
                 break;
             case R.id.nav_share_fb: shareOnFaceBook();
             break;
@@ -241,6 +240,55 @@ public class LandingPage extends AppCompatActivity
         return true;
     }
 
+    private void chooseFromPicturesFolder() {
+        Intent intentPicturePicker = new Intent();
+        intentPicturePicker.setType("image/*");
+        intentPicturePicker.setAction(Intent.ACTION_GET_CONTENT);
+        startActivityForResult(Intent.createChooser(intentPicturePicker, "Select Picture"),
+                UPLOAD_PICTURE_MANUALLY);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == UPLOAD_PICTURE_MANUALLY) {
+            if (resultCode == RESULT_OK) {
+                if (data==null)
+                Toast.makeText(this, "No Meal Photo chosen", Toast.LENGTH_SHORT).show();
+                else{
+                    Uri thisPhotoUri = null;
+                    try {
+                        Uri uriPicture = data.getData();
+                        if (uriPicture!=null)
+                        //if Uri retrieved successfully, then create new meal photo and
+                            // associated files with it
+                         thisPhotoUri = BitmapUtils.createMealPhotoFileFromUri(this
+                                .getContentResolver().openInputStream(uriPicture));
+                        else {
+                            //Else give a message to the user and return from this method without doing anything
+                            Toast.makeText(this, "No picture chosen", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                    } catch (NullPointerException | FileNotFoundException e) {
+                        FirebaseCrash.log(LP_TAG + e.getMessage());
+                        Log.e(LP_TAG, e.getMessage());
+                    }
+
+                    if (thisPhotoUri!=null) {
+                        //add Photo to Media Gallery of the phone
+                        Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+                        //Add to gallery
+                        mediaScanIntent.setData(thisPhotoUri);
+                        this.sendBroadcast(mediaScanIntent);
+                    }
+
+                    //Start the mealPhoto activity
+                    Intent intentMealPhoto = new Intent(this, MealPhoto.class);
+                    startActivity(intentMealPhoto);
+                }
+            }
+        }
+    }
 
     private void revokeAccess() {
         mFirebaseAuth.signOut(); //Signout from Firebase
@@ -330,78 +378,8 @@ public class LandingPage extends AppCompatActivity
 
     //Method to Invoke Camera Action for taking photo of the food/Meal
     private void takeFoodPhoto() {
-        //Create the file to save the photo
-        File photoFile = null;
-        try {
-            photoFile = createPhotoFile();
-        } catch (IOException IOE){
-            IOE.printStackTrace();
-            Log.d(LP_TAG, "IO Exception happened while creating the file for saving the image");
-        }
-
-        //Start the camera to take the photo and save it to the created file once clicked
-        if (photoFile !=null) {
-            startTheCameraAndSavePhoto (photoFile);
-            //Add Photo to the Gallery
-            addPhotoToGallery();
-        }
-    }
-
-    private File createPhotoFile() throws IOException {
-        File photoFile = null;
-        String mealType = DateAndTimeUtils.getMealTypeBasedOnTimeOfTheDay();
-        String timeStamp = DateAndTimeUtils.dateTimeStamp();
-        String photoFileName = mealType + timeStamp;
-        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-        photoFile = File.createTempFile(photoFileName, ".jpg", storageDir);
-        mCurrentPhotoPath = photoFile.getAbsolutePath();
-        BitmapUtils.setImageFileName(photoFile.getName());
-        return photoFile;
-    }
-
-    private void startTheCameraAndSavePhoto(File photoFile) {
-
-        try {
-             photoUri = FileProvider.getUriForFile(this,
-                     Constants.FILE_PROVIDER_AUTHORITY, photoFile);
-        } catch (IllegalArgumentException e) {
-            e.printStackTrace();
-            Log.v(LP_TAG, e.toString());
-        }
-
-        Intent takePhotoIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        takePhotoIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri);
-
-        if (takePhotoIntent.resolveActivity(getPackageManager())!=null) {
-            startActivityForResult(takePhotoIntent, REQUEST_IMAGE_CAPTURE);
-        }
-    }
-
-    private void addPhotoToGallery() {
-        Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-
-        //Todo: Optimize the creation of new file and new Uri
-        File file = new File(mCurrentPhotoPath);
-        photoUri = Uri.fromFile(file);
-
-        //Save path and Uri for the full Size photo on the phone
-        BitmapUtils.setPhotoUri(photoUri);
-        BitmapUtils.setPhotoPath(mCurrentPhotoPath);
-
-        //Add to gallery
-        mediaScanIntent.setData(photoUri);
-        this.sendBroadcast(mediaScanIntent);
-    }
-
-    //Check the photo taken and open the MealPhoto Activity
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent takePhotoIntent) {
-        if ((requestCode==REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK)) {
-            Intent mealPhotoIntent = new Intent(this, MealPhoto.class);
-            //put the extras Bundle into intent for the new activity
-            mealPhotoIntent.putExtra("PhotoFilePath", mCurrentPhotoPath );
-            startActivity(mealPhotoIntent);
-        }
+        Intent intentCamera = new Intent(this, CameraActivity.class);
+        startActivity(intentCamera);
     }
 
     @Override
@@ -427,6 +405,9 @@ public class LandingPage extends AppCompatActivity
     @Override
     public void onListFragmentInteraction(Post post, View v, int position) {
         if (v.getId() == R.id.pi_heart_icon) heartClick(v, post);
+        if (v.getId() == R.id.pi_likes_count) numberofLikesClick(v, post);
+        if (v.getId() == R.id.pi_food_photo) photoClick(v);
+        if (v.getId() == R.id.pi_share_placard) shareThisPhoto(v);
     }
 
     public void heartClick(View view, Post post) {
@@ -478,11 +459,11 @@ public class LandingPage extends AppCompatActivity
         if(userFirebaseID.equals(CURRENT_USER)) //If Placard belongs to current user listing
         FirebaseStorageUtils.updateIlike (dateTimeStampID, newValue, newLikeCount);
         else {//If placard belongs to LAST POSTS listing
-            if (newValue == true)
-            FirebaseStorageUtils.updateMyLikes(dateTimeStampID, newValue, newLikeCount, userFirebaseID);
+            if (newValue)
+            FirebaseStorageUtils.addToMyLikes(dateTimeStampID, newValue, newLikeCount, userFirebaseID);
 
-            if (newValue == false)
-                FirebaseStorageUtils.deleteMyLikes(dateTimeStampID, newValue, newLikeCount,
+            if (!newValue)
+                FirebaseStorageUtils.deleteFromMyLikes(dateTimeStampID, newValue, newLikeCount,
                         userFirebaseID, post);
         }
     }
@@ -515,8 +496,7 @@ public class LandingPage extends AppCompatActivity
         CardView viewGrandParent = (CardView) viewParent.getParent().getParent();
         ImageView thisPhoto = viewGrandParent.findViewById(R.id.pi_food_photo);
         Bitmap tempImage = ((BitmapDrawable)thisPhoto.getDrawable()).getBitmap();
-        File tempImageFile = createTempUploadFile(tempImage,
-                getExternalFilesDir(Environment.DIRECTORY_PICTURES));
+        File tempImageFile = createTempUploadFile(tempImage);
         Uri tempImageFileUri = Uri.fromFile(tempImageFile);
 
         //TODO: try the ACTION_SENDTO
@@ -526,10 +506,12 @@ public class LandingPage extends AppCompatActivity
         startActivity(Intent.createChooser(shareIntent, "Share this photo..."));
     }
 
-    public void numberofLikesClick(View view) {
-        //ToDo: Display List of people who liked this placard
-        Toast.makeText(this, "ToDo: Display List of people who liked this placard",
-                Toast.LENGTH_SHORT).show();
+    public void numberofLikesClick(View view, Post currentPost) {
+        //Create list of users from "likedMe"
+        //Todo: undo comment of below line
+        PostLikesActivity.setListOfUsers(currentPost.getMyFans());
+        Intent intentPostLikes = new Intent(this, PostLikesActivity.class);
+        startActivity(intentPostLikes);
     }
 
     public void photoClick(View view) {
@@ -579,7 +561,6 @@ public class LandingPage extends AppCompatActivity
                     return LandingPageFragment.newInstance(position);
             }
         }
-
 
         @Override
         public int getCount() {

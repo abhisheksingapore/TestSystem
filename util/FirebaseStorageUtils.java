@@ -21,8 +21,10 @@ import java.util.Map;
 import me.veganbuddy.veganbuddy.actors.AppMessageForTheDay;
 import me.veganbuddy.veganbuddy.actors.Comments;
 import me.veganbuddy.veganbuddy.actors.Post;
+import me.veganbuddy.veganbuddy.actors.PostFan;
 import me.veganbuddy.veganbuddy.actors.Vcoins;
 import me.veganbuddy.veganbuddy.actors.Vnotification;
+import me.veganbuddy.veganbuddy.ui.PostLikesActivity;
 
 
 import static me.veganbuddy.veganbuddy.ui.CommentsActivity.placardCommentsRecyclerViewAdapter;
@@ -181,27 +183,35 @@ public class FirebaseStorageUtils {
         setProperDatabaseReference();
         myRef.child(POSTS_NODE).child(dateStampID).child("iLoveFlag").setValue(newValue);
         myRef.child(POSTS_NODE).child(dateStampID).child("likesCount").setValue(newLikeCount);
+        //Add to my Fans as well
+        myRef.child(POSTS_NODE).child(dateStampID).child("myFans")
+                .child(thisAppUser.getFireBaseID()).setValue(addNewFan());
 
-        //Check if this is the "LastPost" for this user. If yes, then update it as well and
-        // also update the "mylikes" flag of thisAppUser
+        //Check if this is the "LastPost" for this user. If yes, then update it as well
         if (dateStampID.equals(thisAppUser.getLastPostID())) {
             setLastPostsFirebaseReference(); //To update the AllPosts under the "LastPosts" node
             myRef.child(thisAppUser.getFireBaseID()).child("iLoveFlag").setValue(newValue);
             myRef.child(thisAppUser.getFireBaseID()).child("likesCount").setValue(newLikeCount);
-            if (newValue) {
-                thisAppUser.setMyLikes(thisAppUser.getFireBaseID(), dateStampID);
-                setUserData();
-            } else {
-                //Remove this post from "myLikes' for thisAppUser
-                thisAppUser.deleteMyLike(thisAppUser.getFireBaseID());
-                setUserData();
-            }
+
+            //Add to myFans as well
+            myRef.child(thisAppUser.getFireBaseID()).child("myFans")
+                    .child(thisAppUser.getFireBaseID()).setValue(addNewFan());
         }
 
+        // also update the "mylikes" flag of thisAppUser
+        if (newValue) {
+            thisAppUser.setMyLikes(thisAppUser.getFireBaseID(), dateStampID);
+            setUserData();
+        } else {
+            //Remove this post from "myLikes' for thisAppUser
+            thisAppUser.deleteMyLike(thisAppUser.getFireBaseID(), dateStampID);
+            setUserData();
+        }
     }
 
-    //Method to the update the "iLike" flag and "likesCount" of a given post of ANY user
-    public static void updateMyLikes(String dateStampID, boolean newValue, int newLikeCount,
+    //Method to the update the "iLike" flag and "likesCount" of a lastPost of other users, including
+    // thisAppUser
+    public static void addToMyLikes(String dateStampID, boolean newValue, int newLikeCount,
                                      String userFirebaseID) {
         setLikesFirebaseReference(); //To update both "posts" and the "lastPosts" node
 
@@ -209,11 +219,11 @@ public class FirebaseStorageUtils {
         myRef.child(userFirebaseID).child(POSTS_NODE).child(dateStampID).child("likesCount").setValue(newLikeCount);
 
 
-        //if the user is not liking his own post, Update the likedMe node of the Original Post itself
+        //if the user is not liking his own post, Update the myFans node of the Original Post itself
         if (!userFirebaseID.equals(thisAppUser.getFireBaseID()))
-        myRef.child(userFirebaseID).child(POSTS_NODE).child(dateStampID).child("likedMe")
-                .setValue(addNewLikedMe(thisAppUser.getFireBaseID(), thisAppUser.getPhotoUrl()));
-        //Else, if the user is liking his own post in the "LASTPosts" fragment, then update
+        myRef.child(userFirebaseID).child(POSTS_NODE).child(dateStampID).child("myFans")
+                .child(thisAppUser.getFireBaseID()).setValue(addNewFan());
+        //Else, if the user is liking his own post in the "LastPosts" fragment, then update
         // the "iLoveFlag" for the Original post of thisAppUser
         else if (userFirebaseID.equals(thisAppUser.getFireBaseID())) {
             myRef.child(userFirebaseID).child(POSTS_NODE).child(dateStampID).child("iLoveFlag")
@@ -224,15 +234,16 @@ public class FirebaseStorageUtils {
         myRef.child(LAST_POSTS_NODE).child(userFirebaseID).child("likesCount").setValue(newLikeCount);
 
 
-        //if the user is not liking his own post, Update the likedMe node of the lastPosts
+        //if the user is not liking his own post, Update the myFans node of the lastPosts
         if (!userFirebaseID.equals(thisAppUser.getFireBaseID()))
-        myRef.child(LAST_POSTS_NODE).child(userFirebaseID).child("likedMe")
-                .setValue(addNewLikedMe(thisAppUser.getFireBaseID(),
-                        thisAppUser.getPhotoUrl()));
-        //However, if the user is liking his own post in the "ALL Posts" fragment, then update
-            // the "iLoveFlag" for the lastPost of thisAppUser
+        myRef.child(LAST_POSTS_NODE).child(userFirebaseID).child("myFans")
+                .child(thisAppUser.getFireBaseID()).setValue(addNewFan());
+        //However, if the user is liking his own post in the "LastPosts" fragment, then update
+            // the "iLoveFlag" for the lastPost of thisAppUser as well as the myFans node
         if (userFirebaseID.equals(thisAppUser.getFireBaseID())) {
             myRef.child(LAST_POSTS_NODE).child(userFirebaseID).child("iLoveFlag").setValue(newValue);
+            myRef.child(LAST_POSTS_NODE).child(userFirebaseID).child("myFans")
+                    .child(thisAppUser.getFireBaseID()).setValue(addNewFan());
         }
 
         //Finally, add this post to "myLikes' for thisAppUser
@@ -240,13 +251,12 @@ public class FirebaseStorageUtils {
         setUserData();
     }
 
-    private static Map<String, String> addNewLikedMe(String fireBaseID, String photoUrl) {
-        Map<String, String> map = new HashMap<>();
-        map.put(fireBaseID, photoUrl);
-        return map;
+    private static PostFan addNewFan() {
+        PostFan postFan = new PostFan(thisAppUser.getUserName(), thisAppUser.getPhotoUrl());
+        return postFan;
     }
 
-    public static void deleteMyLikes(String dateStampID, boolean newValue, int newLikeCount,
+    public static void deleteFromMyLikes(String dateStampID, boolean newValue, int newLikeCount,
                                      String userFirebaseID, Post post) {
 
         setLikesFirebaseReference(); //To update both "posts" and the "lastPosts" node
@@ -254,11 +264,11 @@ public class FirebaseStorageUtils {
         //Update the likesCount of the Original Post itself
         myRef.child(userFirebaseID).child(POSTS_NODE).child(dateStampID).child("likesCount").setValue(newLikeCount);
 
-        //Update the likedMe node of the Original Post itself
-        myRef.child(userFirebaseID).child(POSTS_NODE).child(dateStampID).child("likedMe")
+        //Update the myFans node of the Original Post itself
+        myRef.child(userFirebaseID).child(POSTS_NODE).child(dateStampID).child("myFans")
                 .child(thisAppUser.getFireBaseID()).removeValue();
 
-        //Additionally, if the user is liking his own post in the "ALL Posts" fragment, then update
+        //Additionally, if the user is liking his own post in the "LastPosts" fragment, then update
         // the "iLoveFlag" for the Original post of thisAppUser AS well as in the lastPosts
         if (userFirebaseID.equals(thisAppUser.getFireBaseID())) {
             myRef.child(userFirebaseID).child(POSTS_NODE).child(dateStampID).child("iLoveFlag")
@@ -269,12 +279,12 @@ public class FirebaseStorageUtils {
         //Update the like count of the lastPosts node
         myRef.child(LAST_POSTS_NODE).child(userFirebaseID).child("likesCount").setValue(newLikeCount);
 
-        //Update the likedMe node of the lastPosts as well
-        myRef.child(LAST_POSTS_NODE).child(userFirebaseID).child("likedMe")
+        //Update the myFans node of the lastPosts as well
+        myRef.child(LAST_POSTS_NODE).child(userFirebaseID).child("myFans")
                 .child(thisAppUser.getFireBaseID()).removeValue();
 
         //Finally, remove this post from "myLikes' for thisAppUser
-        thisAppUser.deleteMyLike(userFirebaseID);
+        thisAppUser.deleteMyLike(userFirebaseID, dateStampID);
         setUserData();
 
     }

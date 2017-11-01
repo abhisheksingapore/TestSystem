@@ -176,8 +176,8 @@ public class SocialMediaUtils {
     }
 
     private static void createTweetFromMedia(String veganPhilosophyText, StatusesService statusesService) {
-        Call<Tweet> call = statusesService.update(veganPhilosophyText + " @theVeganBuddy "
-                        + " #everyMealCounts ", null, null,
+        Call<Tweet> call = statusesService.update(" #everyMealCounts #vegan " + veganPhilosophyText
+                        + " @theVeganBuddy", null, null,
                 null, null, null, null,
                 null, getMediaIDforTwitter());
         call.enqueue(new Callback<Tweet>() {

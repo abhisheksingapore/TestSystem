@@ -69,6 +69,8 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        FirebaseDatabase.getInstance().setPersistenceEnabled(true);
+
         setContentView(R.layout.activity_login);
 
         //Initialize Twitter
@@ -88,7 +90,6 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
             Toast.makeText(this, "App Link Target URL: " + targetUrl.toString(), Toast.LENGTH_SHORT).show();
         }
 
-        FirebaseDatabase.getInstance().setPersistenceEnabled(true);
         showProgressBarAndBackgroundImage();
         prepareGoogleAuthComponents();
         createNotificationChannel();

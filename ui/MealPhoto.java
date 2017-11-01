@@ -7,14 +7,11 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Location;
-import android.media.ExifInterface;
 import android.net.Uri;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.ResultReceiver;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -27,18 +24,22 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.GooglePlayServicesNotAvailableException;
+import com.google.android.gms.common.GooglePlayServicesRepairableException;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.places.Place;
+import com.google.android.gms.location.places.ui.PlacePicker;
+import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.storage.StorageReference;
 import com.squareup.picasso.Picasso;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 
 import me.veganbuddy.veganbuddy.R;
@@ -47,6 +48,8 @@ import me.veganbuddy.veganbuddy.util.BitmapUtils;
 import me.veganbuddy.veganbuddy.util.Constants;
 
 import static me.veganbuddy.veganbuddy.services.FetchAddressIntentService.addressList;
+import static me.veganbuddy.veganbuddy.services.FetchAddressIntentService.placesList;
+import static me.veganbuddy.veganbuddy.util.Constants.FAILURE_RESULT;
 import static me.veganbuddy.veganbuddy.util.Constants.FIRST_PIC_NAME;
 import static me.veganbuddy.veganbuddy.util.Constants.HIDE_EDIT_TEXT;
 import static me.veganbuddy.veganbuddy.util.Constants.MP_TAG;
@@ -55,21 +58,27 @@ import static me.veganbuddy.veganbuddy.util.Constants.SHARETOFACEBOOK;
 import static me.veganbuddy.veganbuddy.util.Constants.SHARETOPINTEREST;
 import static me.veganbuddy.veganbuddy.util.Constants.SHARETOTWITTER;
 import static me.veganbuddy.veganbuddy.util.Constants.SHOW_EDIT_TEXT;
+import static me.veganbuddy.veganbuddy.util.Constants.SHOW_MEAL_PHOTO;
+import static me.veganbuddy.veganbuddy.util.Constants.SHOW_PROGRESS_BAR;
+import static me.veganbuddy.veganbuddy.util.Constants.STATS_IMAGE_URI;
+import static me.veganbuddy.veganbuddy.util.Constants.SUCCESS_RESULT;
 import static me.veganbuddy.veganbuddy.util.Constants.VEGANPHILOSOPHY;
 
 import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.getAppMessage;
 import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.getNextPicName;
+import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.getStatsPicReference;
 import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.retrieveMessageForTheDay;
 import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.setNextPicName;
-import static me.veganbuddy.veganbuddy.util.SocialMediaUtils.initializeTwitter;
+import static me.veganbuddy.veganbuddy.util.GlobalVariables.myDashboard;
 import static me.veganbuddy.veganbuddy.util.SocialMediaUtils.loginToFaceBook;
 import static me.veganbuddy.veganbuddy.util.SocialMediaUtils.loginToPinterest;
 import static me.veganbuddy.veganbuddy.util.SocialMediaUtils.loginToTwitter;
 
 
 //Todo: Convert to Tabbed Activity for the options of  - "Choose from gallery" and "Video"
-public class MealPhoto extends AppCompatActivity  implements GoogleApiClient.ConnectionCallbacks,
-        GoogleApiClient.OnConnectionFailedListener{
+public class MealPhoto extends AppCompatActivity {
+
+    final int PLACE_PICKER_REQUEST = 1;
 
     ImageView mealImageView;
     Boolean repeatClick = false;
@@ -87,9 +96,13 @@ public class MealPhoto extends AppCompatActivity  implements GoogleApiClient.Con
     EditText editTextVeganPh;
     ImageButton imageButtonSend;
     TextView textViewLocationSelected;
+    ProgressBar progressBar;
+
     Boolean facebook;
     Boolean pinterest;
     Boolean twitter;
+    String stringStatsImageUri;
+
     Boolean showEditTextFlag = false;
     SharedPreferences sharedPreferences;
 
@@ -104,19 +117,14 @@ public class MealPhoto extends AppCompatActivity  implements GoogleApiClient.Con
         editTextVeganPh = findViewById(R.id.amp_editText_food);
         imageButtonSend = findViewById(R.id.amp_send_button);
         textViewLocationSelected = findViewById(R.id.amp_tv_location_selected);
+        progressBar = findViewById(R.id.amp_progress_bar);
+        mealImageView = findViewById(R.id.amp_image_food);
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 
         mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
         locationList = new ArrayList<>();
 
-        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            getLastKnownLocation();
-        }
-        else {
-            Toast.makeText(this, "App needs Location Permission", Toast.LENGTH_SHORT).show();
-            ActivityCompat.requestPermissions
-                    (this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, Constants.LOCATION_PERMITTED);
-        }
+        checkLocationPermission();
 
         LinearLayoutManager linearLayoutManager
                 = new LinearLayoutManager(this,LinearLayoutManager.HORIZONTAL, false);
@@ -127,13 +135,29 @@ public class MealPhoto extends AppCompatActivity  implements GoogleApiClient.Con
         handleSocialMediaSharingOptions();
     }
 
+    private void checkLocationPermission() {
+        //Check Location Permission. If it is granted, then get the lastKnownLocation
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            getLastKnownLocation();
+        } //Else request for the location Permission
+        else {
+            ActivityCompat.requestPermissions
+                    (this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, Constants.LOCATION_PERMITTED);
+        }
+    }
+
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         switch (requestCode) {
+            //Once location permission is granted, getLastKnownLocation
             case Constants.LOCATION_PERMITTED: getLastKnownLocation();
             break;
-            default: System.exit(0);
+            //Else display a message
+            default:
+                Toast.makeText(this, "Application will not work fine without location " +
+                        "permission", Toast.LENGTH_LONG).show();
+                updateUI(SHOW_EDIT_TEXT);
         }
     }
 
@@ -156,52 +180,48 @@ public class MealPhoto extends AppCompatActivity  implements GoogleApiClient.Con
 
     @Override
     protected void onStart() {
-        String mealPhotoPath;
-        int photoLength = -939;
-        int photoWidth = - 939;
-        boolean rotate = false;
-
         super.onStart();
-        Bundle extras = getIntent().getExtras();
-        mealPhotoPath = extras.getString("PhotoFilePath");
-        try {
-            ExifInterface exifInterface = new ExifInterface(mealPhotoPath);
-            photoLength = exifInterface.getAttributeInt(ExifInterface.TAG_IMAGE_LENGTH, -939);
-            photoWidth = exifInterface.getAttributeInt(ExifInterface.TAG_IMAGE_WIDTH, -939);
-          } catch (IOException IOE) {
-            IOE.printStackTrace();
-            Log.i(MP_TAG, "IO error in getting Exif data from camera photo");
-        }
-
-        if ( photoLength > photoWidth ) {
-            rotate = true;
-        }
-        //Create a thumbnail of the received photo and load into Imageview
-        File photoThumbnail = BitmapUtils.createThumbnail
-                (mealPhotoPath, getExternalFilesDir(Environment.DIRECTORY_PICTURES), rotate);
-        //save thumbnail URI in BitmapUtils
-        Uri photoThumbnailUri = Uri.fromFile(photoThumbnail);
-        BitmapUtils.photoThumbnailUri = photoThumbnailUri;
-        mealImageView = findViewById(R.id.amp_image_food);
-        Picasso.with(this).load(photoThumbnailUri).into(mealImageView);
-
-
-        //check App Message to be displayed in the Meal Preview Screen
-        // If it is null, then set it to First_PIC
-        if (getAppMessage()==null) {
-            retrieveMessageForTheDay(FIRST_PIC_NAME);
-            setNextPicName(FIRST_PIC_NAME);
-            Log.v(MP_TAG, "Vegan Message file for the day is: " + getNextPicName() +
-            " \n And Vegan Message for the day is: " + getAppMessage());
-        }
+        retrieveStatsImageUri();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        // check if myDashboard is null, then re-login
+        if (myDashboard == null) {
+            Intent intentLogin = new Intent (this, LoginActivity.class);
+            startActivity(intentLogin);
+            finish();
+        }
         if (showEditTextFlag) updateUI(SHOW_EDIT_TEXT);
         else updateUI(HIDE_EDIT_TEXT);
+
+        String mealPhotoPath = BitmapUtils.getPhotoPath();
+        //If no meal photo received in this activity
+        if (mealPhotoPath == null) {
+            updateUI(SHOW_PROGRESS_BAR);
+            Toast.makeText(this, "No meal photo received. Please try again",
+                    Toast.LENGTH_SHORT).show();
+        }
+        else {
+            //Create a thumbnail of the received photo and load into Imageview using Picasso
+            BitmapUtils.createThumbnail();
+            Picasso.with(this).load(BitmapUtils.getPhotoThumbnailUri()).into(mealImageView);
+            //check App Message to be displayed in the Meal Preview Screen
+            // If it is null, then set it to First_PIC
+            if (getAppMessage()==null) {
+                retrieveMessageForTheDay(FIRST_PIC_NAME);
+                setNextPicName(FIRST_PIC_NAME);
+                myDashboard.setLastPicName(FIRST_PIC_NAME);
+                Log.v(MP_TAG, "Vegan Message file for the day is: " + getNextPicName() +
+                        " \n And Vegan Message for the day is: " + getAppMessage());
+            }
+            //show the imageview once meal photo thumbnail and appMessagePic are loaded
+            updateUI(SHOW_MEAL_PHOTO);
+        }
+
     }
+
 
     @Override
     protected void onStop() {
@@ -216,15 +236,17 @@ public class MealPhoto extends AppCompatActivity  implements GoogleApiClient.Con
 
         if (inputText.trim().length() > 0 || repeatClick) {
             //Create intent for MealPreviewPhoto
-            Intent previewPhotoIntent = new Intent(this, MealPreviewPhoto.class);
+            final Intent previewPhotoIntent = new Intent(this, MealPreviewPhoto.class);
             previewPhotoIntent.putExtra(VEGANPHILOSOPHY, inputText);
             previewPhotoIntent.putExtra(SELECTED_LOCATION, selectedLocation);
             previewPhotoIntent.putExtra(SHARETOFACEBOOK, facebook);
             previewPhotoIntent.putExtra(SHARETOPINTEREST, pinterest);
             previewPhotoIntent.putExtra(SHARETOTWITTER, twitter);
+            previewPhotoIntent.putExtra(STATS_IMAGE_URI,stringStatsImageUri);
             startActivity(previewPhotoIntent);
             repeatClick = false;
         } else {
+            //Todo: insert logic for automatic vegan quotes
             Snackbar noCommentFeedback = Snackbar
                     .make(view, "Any comments about the picture?", Snackbar.LENGTH_SHORT);
             noCommentFeedback.show();
@@ -232,21 +254,17 @@ public class MealPhoto extends AppCompatActivity  implements GoogleApiClient.Con
         }
     }
 
-
-    @Override
-    public void onConnected(@Nullable Bundle bundle) {
-
+    private void retrieveStatsImageUri() {
+        StorageReference statsPicReference = getStatsPicReference(getNextPicName());
+        final Task<Uri> uriTask = statsPicReference.getDownloadUrl();
+        uriTask.addOnCompleteListener(new OnCompleteListener<Uri>() {
+            @Override
+            public void onComplete(@NonNull Task<Uri> task) {
+                stringStatsImageUri = task.getResult().toString();
+            }
+        });
     }
 
-    @Override
-    public void onConnectionSuspended(int i) {
-
-    }
-
-    @Override
-    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-
-    }
 
     protected void startIntentService () {
         if (mLastLocation != null) {
@@ -259,18 +277,34 @@ public class MealPhoto extends AppCompatActivity  implements GoogleApiClient.Con
     }
 
     public void locationAddClick(View view) {
-        if (view.getId() == R.id.amp_add_location) {
-            Toast.makeText(this, view.toString() + " To insert Places search API", Toast.LENGTH_SHORT).show();
+        Intent intentPlacePicker;
+        //Prepare intent for launching PlacePicker
+        try {
+            PlacePicker.IntentBuilder intentBuilder = new PlacePicker.IntentBuilder();
+            intentPlacePicker = intentBuilder.build(this);
+            startActivityForResult(intentPlacePicker, PLACE_PICKER_REQUEST);
+        } catch (GooglePlayServicesRepairableException | GooglePlayServicesNotAvailableException e) {
+            Log.e(MP_TAG, e.getMessage());
         }
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == PLACE_PICKER_REQUEST) {
+            if (resultCode == RESULT_OK) {
+                Place place = PlacePicker.getPlace(this, data);
+                textViewLocationSelected.setText(place.getName());
+            }
+        }
+    }
 
     public void locationEditClick(View view) {
         updateUI(Constants.HIDE_EDIT_TEXT);
     }
 
     public void noLocationClick(View view) {
-        textViewLocationSelected.setText(R.string.amp_no_location);
+        textViewLocationSelected.setText(getString(R.string.amp_no_location));
         updateUI (Constants.SHOW_EDIT_TEXT);
     }
 
@@ -302,6 +336,15 @@ public class MealPhoto extends AppCompatActivity  implements GoogleApiClient.Con
                 editTextVeganPh.setVisibility(View.INVISIBLE);
                 imageButtonSend.setVisibility(View.INVISIBLE);
                 showEditTextFlag = false;
+                break;
+            case SHOW_MEAL_PHOTO:
+                mealImageView.setVisibility(View.VISIBLE);
+                progressBar.setVisibility(View.INVISIBLE);
+                break;
+            case SHOW_PROGRESS_BAR:
+                mealImageView.setVisibility(View.INVISIBLE);
+                progressBar.setVisibility(View.VISIBLE);
+                break;
         }
     }
 
@@ -418,26 +461,23 @@ public class MealPhoto extends AppCompatActivity  implements GoogleApiClient.Con
 
     class AddressResultReceiver extends ResultReceiver {
 
-        public AddressResultReceiver(Handler handler) {
+        AddressResultReceiver(Handler handler) {
             super(handler);
         }
 
         @Override
         protected void onReceiveResult(int resultCode, Bundle resultData) {
+
             switch (resultCode){
-                case Constants.SUCCESS_RESULT:
-                    if (addressList != null) {
-                        for (Address eachAddress: addressList) {
-                            String addressName = eachAddress.getPremises();
-                            if (addressName == null) {
-                                addressName = eachAddress.getAddressLine(0);
-                            }
-                            locationList.add(addressName);
+                case SUCCESS_RESULT:
+                    if (placesList != null) {
+                        for (String eachplace: placesList) {
+                            locationList.add(eachplace);
                             locationRecyclerViewAdapter.notifyDataSetChanged();
                         }
                     }
                     break;
-                case Constants.FAILURE_RESULT:
+                case FAILURE_RESULT:
                     break;
             }
         }

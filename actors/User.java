@@ -64,7 +64,9 @@ public class User {
     }
 
     public void setMyLikes(String userId, String postID) {
-        this.myLikes.put(userId, postID);
+        //creating a unique key by adding userID to postID. This will ensure that there can be
+        //multiple photo likes by same user for another user
+        this.myLikes.put(userId+postID, postID);
     }
 
     public String getMyPinterestID() {
@@ -107,7 +109,7 @@ public class User {
         return myLikes;
     }
 
-    public void deleteMyLike(String userFirebaseID) {
-        this.myLikes.remove(userFirebaseID);
+    public void deleteMyLike(String userFirebaseID, String postId) {
+        this.myLikes.remove(userFirebaseID + postId);
     }
 }
