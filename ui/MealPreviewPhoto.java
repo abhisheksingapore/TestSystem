@@ -148,7 +148,8 @@ public class MealPreviewPhoto extends AppCompatActivity {
         imageURI = BitmapUtils.getPhotoUri();
         mealPhotoName = BitmapUtils.getMealPhotoName();
 
-        Picasso.with(this).load(thumbnailImageURI).into(imageView);
+        Picasso.with(this).load(thumbnailImageURI).placeholder(R.drawable.progressbar_image)
+                .into(imageView);
         TextView textViewComment = findViewById(R.id.tv_preview_comments);
         TextView textViewLocation = findViewById(R.id.cmpp_tv_location);
 

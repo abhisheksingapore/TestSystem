@@ -20,16 +20,17 @@ import static me.veganbuddy.veganbuddy.util.DateAndTimeUtils.dateTimeStamp;
 
 public class User {
     String fireBaseID;
-    String myFaceBookID;
-    String myTwitterID;
-    String myPinterestID;
-    String myPinterestBoardID;
     String userName;
     String photoUrl;
     String email;
     String lastPostID;
-    Map<String, String> myLikes = new HashMap<>();
+    int myFollowersCount;
+    int meFollowingCount;
 
+    String myFaceBookID;
+    String myTwitterID;
+    String myPinterestID;
+    String myPinterestBoardID;
 
     public User(){
         //default empty constructor
@@ -41,6 +42,8 @@ public class User {
         fireBaseID = thisUser.getUid();
         email = thisUser.getEmail();
         lastPostID = dateTimeStamp();
+        meFollowingCount = 0;
+        myFollowersCount = 0;
     }
 
     public void setMyFaceBookID(String myFaceBookID) {
@@ -63,10 +66,24 @@ public class User {
         this.lastPostID = lastPostID;
     }
 
-    public void setMyLikes(String userId, String postID) {
-        //creating a unique key by adding userID to postID. This will ensure that there can be
-        //multiple photo likes by same user for another user
-        this.myLikes.put(userId+postID, postID);
+    public String createMyLikesKey(String userId, String postID) {
+        return userId+postID;
+    }
+
+    public int getMyFollowersCount() {
+        return myFollowersCount;
+    }
+
+    public void setMyFollowersCount(int myFollowersCount) {
+        this.myFollowersCount = myFollowersCount;
+    }
+
+    public int getMeFollowingCount() {
+        return meFollowingCount;
+    }
+
+    public void setMeFollowingCount(int meFollowingCount) {
+        this.meFollowingCount = meFollowingCount;
     }
 
     public String getMyPinterestID() {
@@ -105,11 +122,4 @@ public class User {
         return lastPostID;
     }
 
-    public Map<String, String> getMyLikes() {
-        return myLikes;
-    }
-
-    public void deleteMyLike(String userFirebaseID, String postId) {
-        this.myLikes.remove(userFirebaseID + postId);
-    }
 }

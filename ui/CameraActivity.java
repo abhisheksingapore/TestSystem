@@ -19,14 +19,9 @@ import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
-import com.google.android.gms.common.GooglePlayServicesNotAvailableException;
-import com.google.android.gms.common.GooglePlayServicesRepairableException;
-import com.google.android.gms.location.places.ui.PlacePicker;
 import com.google.firebase.crash.FirebaseCrash;
 import com.wonderkiln.camerakit.CameraListener;
 import com.wonderkiln.camerakit.CameraView;
-
-import java.io.File;
 
 import me.veganbuddy.veganbuddy.R;
 import me.veganbuddy.veganbuddy.util.BitmapUtils;
@@ -71,6 +66,7 @@ public class CameraActivity extends AppCompatActivity {
         imageButtonShutterSound = findViewById(R.id.act_camera_sound);
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         loadSharedPreferences();
+
 
             cameraView.setCameraListener( new CameraListener() {
                 @Override

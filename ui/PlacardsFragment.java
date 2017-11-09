@@ -2,8 +2,9 @@ package me.veganbuddy.veganbuddy.ui;
 
 import android.content.Context;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
-import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -11,27 +12,26 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.google.firebase.crash.FirebaseCrash;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 
 import me.veganbuddy.veganbuddy.R;
 import me.veganbuddy.veganbuddy.actors.Post;
-import me.veganbuddy.veganbuddy.actors.User;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import static me.veganbuddy.veganbuddy.util.Constants.DATE_STAMP_KEY_NAME;
-import static me.veganbuddy.veganbuddy.util.Constants.NODE_FOR_ALL_POSTS;
-import static me.veganbuddy.veganbuddy.util.Constants.NODE_FOR_MY_POSTS;
+import static me.veganbuddy.veganbuddy.util.Constants.LAST_POSTS_NODE;
+import static me.veganbuddy.veganbuddy.util.Constants.POSTS_NODE;
 import static me.veganbuddy.veganbuddy.util.Constants.NUMBER_OF_POSTS_TO_RETRIEVE;
 import static me.veganbuddy.veganbuddy.util.Constants.PF_TAG;
-import static me.veganbuddy.veganbuddy.util.Constants.PROFILE_NODE;
+import static me.veganbuddy.veganbuddy.util.Constants.POST_FAN_NODE;
 import static me.veganbuddy.veganbuddy.util.GlobalVariables.thisAppUser;
 
 /**
@@ -43,21 +43,18 @@ import static me.veganbuddy.veganbuddy.util.GlobalVariables.thisAppUser;
 public class PlacardsFragment extends Fragment {
 
     // TODO: Customize parameter argument names
-    private static final String ARG_COLUMN_COUNT = "column-count";
     private static final String ARG_POSTS_NODE = "posts_node";
 
     // TODO: Customize parameters
-    private int mColumnCount = 1;
-    private String mPostsNode = "posts";
     private OnListFragmentInteractionListener mListener;
+    String mPostsNode;
+
 
     private static DatabaseReference myRef; //Reference for nodes in the database
     private List<Post> postsList = new ArrayList<>();
-    private List<String> userFirebaseIDs = new ArrayList<>();
-    private Map<String, String> myLikes = new HashMap<>();
+    private List<String> postIDList = new ArrayList<>();
 
     PlacardsRecyclerViewAdapter placardsRecyclerViewAdapter;
-
 
     /**
      * Mandatory empty constructor for the fragment manager to instantiate the
@@ -66,12 +63,9 @@ public class PlacardsFragment extends Fragment {
     public PlacardsFragment() {
     }
 
-    // TODO: Customize parameter initialization
-    @SuppressWarnings("unused")
-    public static PlacardsFragment newInstance(int columnCount, String postsNode) {
+    public static PlacardsFragment newInstance( String postsNode) {
         PlacardsFragment fragment = new PlacardsFragment();
         Bundle args = new Bundle();
-        args.putInt(ARG_COLUMN_COUNT, columnCount);
         args.putString(ARG_POSTS_NODE, postsNode);
         fragment.setArguments(args);
         return fragment;
@@ -82,15 +76,8 @@ public class PlacardsFragment extends Fragment {
         super.onCreate(savedInstanceState);
 
         if (getArguments() != null) {
-            mColumnCount = getArguments().getInt(ARG_COLUMN_COUNT);
             mPostsNode = getArguments().getString(ARG_POSTS_NODE);
-
-            //Set Listener to thisAppUser data for the fragment of lastPosts. This will be used to
-            // retrieve myLikes
-            if (mPostsNode.equals(NODE_FOR_ALL_POSTS)) {
-                retrieveUserData();
-            }
-            retrievePostsData(mPostsNode);
+            retrievePostsData();
         }
     }
 
@@ -98,24 +85,19 @@ public class PlacardsFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_placards_list, container, false);
+         View fragmentview = inflater.inflate(R.layout.fragment_placards_list, container, false);
 
         // Set the adapter
-        if (view instanceof RecyclerView) {
-            Context context = view.getContext();
-            RecyclerView recyclerView = (RecyclerView) view;
-            if (mColumnCount <= 1) {
-                recyclerView.setLayoutManager(new LinearLayoutManager(context));
-            } else {
-                recyclerView.setLayoutManager(new GridLayoutManager(context, mColumnCount));
-            }
-            placardsRecyclerViewAdapter = new PlacardsRecyclerViewAdapter(postsList,
-                                                        userFirebaseIDs, mListener);
+        if (fragmentview instanceof RecyclerView) {
+            Context context = fragmentview.getContext();
+            RecyclerView recyclerView = (RecyclerView) fragmentview;
+            recyclerView.setLayoutManager(new LinearLayoutManager(context));
+            placardsRecyclerViewAdapter = new PlacardsRecyclerViewAdapter(postsList, postIDList,
+                    mListener);
             recyclerView.setAdapter(placardsRecyclerViewAdapter);
         }
-        return view;
+        return fragmentview;
     }
-
 
     @Override
     public void onAttach(Context context) {
@@ -146,7 +128,7 @@ public class PlacardsFragment extends Fragment {
      */
     public interface OnListFragmentInteractionListener {
         // TODO: Update argument type and name
-        void onListFragmentInteraction(Post item, View v, int position);
+        void onListFragmentInteraction(Post item, View v, int position, String postID);
     }
 
     /***********************************************************************
@@ -155,36 +137,32 @@ public class PlacardsFragment extends Fragment {
      ***********************************************************************
      ************************************************************************/
 
-    //This sets reference to to lastPosts node in the database
+    //This sets reference to posts and lastPosts node in the database
     private static void setPostsFirebaseReference(String mPostsNode) {
         FirebaseDatabase mDatabase = FirebaseDatabase.getInstance();
         switch (mPostsNode) {
-            case NODE_FOR_ALL_POSTS: myRef = mDatabase.getReference().child(NODE_FOR_ALL_POSTS);
+            case LAST_POSTS_NODE: myRef = mDatabase.getReference().child(LAST_POSTS_NODE);
             break;
-            case NODE_FOR_MY_POSTS: myRef = mDatabase.getReference()
-                    .child(thisAppUser.getFireBaseID()).child(NODE_FOR_MY_POSTS);
+            case POSTS_NODE: myRef = mDatabase.getReference()
+                    .child(thisAppUser.getFireBaseID()).child(POSTS_NODE);
             break;
         }
     }
 
-    private void retrievePostsData(final String mPostsNode) {
+
+    private void retrievePostsData() {
         setPostsFirebaseReference(mPostsNode); //This sets reference to user specific nodes in the database
         myRef.limitToLast(NUMBER_OF_POSTS_TO_RETRIEVE)
                 .orderByChild(DATE_STAMP_KEY_NAME)
-                .addValueEventListener(new ValueEventListener() {//Todo:optimize addValueEventListeners to childEventListeners
+                .addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 postsList = new ArrayList<>(); //reinitialize as the DataSnapshot will return the entire list
-                userFirebaseIDs = new ArrayList<>(); //reinitialize as the DataSnapshot will return the entire list
+                postIDList = new ArrayList<>(); //reinitialize as the DataSnapshot will return the entire list
 
                 if (dataSnapshot.getChildrenCount() > 0) {
+                    //create array of Placards from Firebase Posts
                     createArrayFromFirebasePosts(dataSnapshot, mPostsNode);
-                    switch (mPostsNode) {
-                        case NODE_FOR_ALL_POSTS: placardsRecyclerViewAdapter.updateLists(postsList, userFirebaseIDs);
-                            break;
-                        case NODE_FOR_MY_POSTS: placardsRecyclerViewAdapter.updateLists(postsList, null);
-                            break;
-                    }
                 }
                 else {
                     Log.v(PF_TAG, "No children found for POSTS. Creating a new node");
@@ -198,35 +176,54 @@ public class PlacardsFragment extends Fragment {
     }
 
     private void createArrayFromFirebasePosts(DataSnapshot dataSnapshot, String mPostsNode) {
+        String postID="";
+        int itemIndex = 0;
+
         for (DataSnapshot singleSnapShot: dataSnapshot.getChildren()) {
             Post thisPost = singleSnapShot.getValue(Post.class);
             postsList.add(thisPost);
-            if (mPostsNode.equals(NODE_FOR_ALL_POSTS)) {
-                userFirebaseIDs.add(singleSnapShot.getKey());
-            }
+            postID = singleSnapShot.getKey();
+            postIDList.add(postID);
+
+            //retrieve fans for each post to update thisPost iLoveFlag
+            retrieveMeInMyFansData(singleSnapShot.getKey(), thisPost, mPostsNode, itemIndex);
+            itemIndex++;
         }
+        updatePlacardsRecyclerView();
     }
 
-    private void retrieveUserData() {
-        FirebaseDatabase mDatabase = FirebaseDatabase.getInstance();
-        DatabaseReference myRef = mDatabase.getReference();
+    private void retrieveMeInMyFansData(final String postID, final Post thisPost,
+                                        final String mPostsNode, final int itemIndex){
+        setPostsFirebaseReference(mPostsNode);
 
-        myRef.child(thisAppUser.getFireBaseID()).child(PROFILE_NODE).addValueEventListener(
-                new ValueEventListener() {
+        Query myFansQuery = myRef.child(POST_FAN_NODE).child(postID).child(thisAppUser.getFireBaseID());
+
+        myFansQuery.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
-                myLikes = new HashMap<>(); //reinitialize as the DataSnapshot will return the entire list
-                thisAppUser = dataSnapshot.getValue(User.class);
-                myLikes = thisAppUser.getMyLikes();
-                placardsRecyclerViewAdapter.updateMyLikes(myLikes);
+                //if this fan exists, then
+                if (dataSnapshot.exists()) {
+                    //update the iLoveFlag
+                    thisPost.setiLoveFlag(true);
+                    //Todo: to find a more efficient way of updating the recyclerview data
+                    placardsRecyclerViewAdapter.notifyDataSetChanged();
+                }
+
+                Log.v(PF_TAG, "Successfully retrieved myFans data for iLove flag ");
             }
 
             @Override
             public void onCancelled(DatabaseError databaseError) {
-                Log.v(PF_TAG, "Data request cancelled due to some error" + databaseError);
+                FirebaseCrash.log(PF_TAG + "Error in retrieving myFans data for iLove flag "
+                + databaseError.getMessage());
+                Log.e(PF_TAG, "Error in retrieving myFans data for iLove flag "
+                        + databaseError.getMessage());
             }
         });
+    }
 
+    private void updatePlacardsRecyclerView() {
+        placardsRecyclerViewAdapter.updateLists(postsList, postIDList);
     }
 
 }

@@ -73,7 +73,7 @@ public class LandingPageFragment extends Fragment {
         // Inflate the layout for a fragment based on the resource ID
         int resourceID;
         switch (mParam1) {
-            case ANIMALS_DASHBOARD_LAYOUT: resourceID = R.layout.content_landing_page;
+            case ANIMALS_DASHBOARD_LAYOUT: resourceID = R.layout.fragment_animals_saved;
             break;
             case VEGAN_DASHBOARD_LAYOUT: resourceID = R.layout.fragment_dashboard_vegan_percentage;
             break;

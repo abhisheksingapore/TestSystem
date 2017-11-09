@@ -19,10 +19,12 @@ import java.util.ArrayList;
 
 import me.veganbuddy.veganbuddy.R;
 import me.veganbuddy.veganbuddy.actors.Dashboard;
+import me.veganbuddy.veganbuddy.actors.User;
 import me.veganbuddy.veganbuddy.actors.Vnotification;
 
 import static me.veganbuddy.veganbuddy.util.Constants.DASHBOARD_NODE;
 import static me.veganbuddy.veganbuddy.util.Constants.LP_TAG;
+import static me.veganbuddy.veganbuddy.util.Constants.PROFILE_NODE;
 import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.retrieveApplicablePicName;
 import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.retrieveMessageForTheDay;
 import static me.veganbuddy.veganbuddy.util.GlobalVariables.myDashboard;
@@ -43,12 +45,11 @@ public class DataRefreshActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        addDashboardListener();
         if (myDashboard != null) {
+            addDashboardListener();
+            addProfileListener();
             //retrieve the app Message that will be displayed along with the meal photos
             retrieveMessageForTheDay(retrieveApplicablePicName());
-            //make the Firebase Database persistent. So even if the WiFi connection is lost the
-            // user can continue to work
         } else {
             //This situation will arise if the app has launched this activity without first retrieving
             // the myDashboard Data
@@ -94,6 +95,25 @@ public class DataRefreshActivity extends AppCompatActivity {
             @Override
             public void onCancelled(DatabaseError databaseError) {
                 Log.e(LP_TAG, "Error in retrieving myDashboard data from Firebase" +
+                        databaseError.getDetails());
+                reloadLandingPage(false);
+            }
+        });
+    }
+
+    private void addProfileListener() {
+        setProperDatabaseReference();
+        myRef.child(PROFILE_NODE).addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                if (dataSnapshot!=null) {
+                    thisAppUser = dataSnapshot.getValue(User.class);
+                    Log.v(LP_TAG, "thisAppUser data fetched from Firebase");
+                }
+            }
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                Log.e(LP_TAG, "Error in retrieving thisAppUser data from Firebase" +
                         databaseError.getDetails());
                 reloadLandingPage(false);
             }

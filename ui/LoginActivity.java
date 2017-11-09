@@ -67,9 +67,9 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
         FirebaseDatabase.getInstance().setPersistenceEnabled(true);
+
+        super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_login);
 
@@ -288,7 +288,7 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
             public void onDataChange(DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists()) {
                     thisAppUser = dataSnapshot.getValue(User.class);
-                    //to catch the odd condition where some data is there for the user node
+                    //to catch the odd condition where some data is present for the user node
                     // except FirebaseID
                     if (thisAppUser.getFireBaseID() == null) {
                         thisAppUser = new User(mFirebaseUser);

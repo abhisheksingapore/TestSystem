@@ -29,7 +29,7 @@ public class FullSizePhoto extends AppCompatActivity {
 
         ActionBar actionBar = getSupportActionBar();
         if (actionBar != null) {
-            actionBar.setDisplayHomeAsUpEnabled(true);
+            actionBar.setDisplayHomeAsUpEnabled(false);
         }
 
         String photoUriStr = getIntent().getStringExtra(FULL_PHOTO_URI);

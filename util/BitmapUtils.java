@@ -246,10 +246,10 @@ public class BitmapUtils {
         String tempFileName = "veganBuddyTempSS";
 
         try {
-            tempFile = File.createTempFile(tempFileName, ".png", veganBuddyFolder);
+            tempFile = File.createTempFile(tempFileName, ".jpg", veganBuddyFolder);
             FileOutputStream fileOutputStream =
                     new FileOutputStream(tempFile);
-            bitmapSS.compress(Bitmap.CompressFormat.PNG, 100, fileOutputStream);
+            bitmapSS.compress(Bitmap.CompressFormat.JPEG, 100, fileOutputStream);
             fileOutputStream.close();
             } catch (IOException | NullPointerException exception) {
                 Log.e(BU_TAG, "Exception while saving Screenshot image to temp file");

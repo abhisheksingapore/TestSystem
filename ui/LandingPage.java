@@ -3,9 +3,9 @@ package me.veganbuddy.veganbuddy.ui;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
+import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.Fragment;
@@ -47,18 +47,26 @@ import me.veganbuddy.veganbuddy.util.BitmapUtils;
 import me.veganbuddy.veganbuddy.util.FirebaseStorageUtils;
 
 import static me.veganbuddy.veganbuddy.util.BitmapUtils.createTempUploadFile;
-import static me.veganbuddy.veganbuddy.util.Constants.CURRENT_USER;
 import static me.veganbuddy.veganbuddy.util.Constants.DO_NOT_INCREASE;
+import static me.veganbuddy.veganbuddy.util.Constants.FOLLOWERS;
+import static me.veganbuddy.veganbuddy.util.Constants.FOLLOWING;
 import static me.veganbuddy.veganbuddy.util.Constants.FULL_PHOTO_URI;
 import static me.veganbuddy.veganbuddy.util.Constants.HEART_EMPTY;
 import static me.veganbuddy.veganbuddy.util.Constants.HEART_FULL;
 import static me.veganbuddy.veganbuddy.util.Constants.INBOUND;
+import static me.veganbuddy.veganbuddy.util.Constants.LAST_PLACARDS_LAYOUT;
+import static me.veganbuddy.veganbuddy.util.Constants.LAST_POSTS_NODE;
 import static me.veganbuddy.veganbuddy.util.Constants.LP_TAG;
-import static me.veganbuddy.veganbuddy.util.Constants.NODE_FOR_ALL_POSTS;
-import static me.veganbuddy.veganbuddy.util.Constants.NODE_FOR_MY_POSTS;
+import static me.veganbuddy.veganbuddy.util.Constants.MY_PLACARDS_LAYOUT;
+import static me.veganbuddy.veganbuddy.util.Constants.NOTIFICATIONS_INBOUND_LAYOUT;
+import static me.veganbuddy.veganbuddy.util.Constants.NOTIFICATIONS_OUTBOUND_LAYOUT;
 import static me.veganbuddy.veganbuddy.util.Constants.NO_LIKES;
 import static me.veganbuddy.veganbuddy.util.Constants.ONE_LIKE;
+import static me.veganbuddy.veganbuddy.util.Constants.ORIGIN_FRAGMENT;
 import static me.veganbuddy.veganbuddy.util.Constants.OUTBOUND;
+import static me.veganbuddy.veganbuddy.util.Constants.POSTID;
+import static me.veganbuddy.veganbuddy.util.Constants.POSTS_NODE;
+import static me.veganbuddy.veganbuddy.util.Constants.RELATION;
 import static me.veganbuddy.veganbuddy.util.Constants.UPLOAD_PICTURE_MANUALLY;
 import static me.veganbuddy.veganbuddy.util.Constants.app_link_url;
 import static me.veganbuddy.veganbuddy.util.Constants.app_logo;
@@ -86,45 +94,60 @@ public class LandingPage extends AppCompatActivity
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_landing_page);
-        Toolbar toolbar =  findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-        getSupportActionBar().setTitle("");//no Title
+        try {
+            super.onCreate(savedInstanceState);
 
 
-        toolbar.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                veganBuddyClick (view);
+            setContentView(R.layout.activity_landing_page);
+            Toolbar toolbar = findViewById(R.id.toolbar);
+            setSupportActionBar(toolbar);
+            getSupportActionBar().setTitle("");//no Title
+
+
+            toolbar.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    veganBuddyClick(view);
+                }
+            });
+
+            final FloatingActionButton fab = findViewById(R.id.fab);
+            fab.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    takeFoodPhoto();
+                }
+            });
+
+            DrawerLayout drawer = findViewById(R.id.drawer_layout);
+            ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
+                    this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+            drawer.addDrawerListener(toggle);
+            toggle.syncState();
+
+            NavigationView navigationView = findViewById(R.id.nav_view);
+            navigationView.setNavigationItemSelectedListener(this);
+            createUserProfile();
+
+            // Create the adapters that will return a fragment for each of the
+            // primary sections of the activity.
+            mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
+
+            // Set up the ViewPagers with the respective sections adapter.
+            mViewPager = findViewById(R.id.container_for_fragments);
+            mViewPager.setAdapter(mSectionsPagerAdapter);
+        } catch (Exception e) {
+            if (myDashboard == null || thisAppUser == null) {
+                //This situation will arise if the app has launched this activity without first retrieving
+                // the myDashboard Data or it crashed on this activity and Android automatically tried
+                // to resume it
+                Intent intentLogin = new Intent(this, LoginActivity.class);
+                startActivity(intentLogin);
+            } else {
+                FirebaseCrash.log(LP_TAG + e.getMessage());
+                Log.e(LP_TAG, "Exception during loading of LandingPage" + e.getMessage());
             }
-        });
-
-        final FloatingActionButton fab = findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                takeFoodPhoto();
-            }
-        });
-
-        DrawerLayout drawer = findViewById(R.id.drawer_layout);
-        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
-                this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
-        drawer.addDrawerListener(toggle);
-        toggle.syncState();
-
-        NavigationView navigationView = findViewById(R.id.nav_view);
-        navigationView.setNavigationItemSelectedListener(this);
-        createUserProfile();
-
-        // Create the adapters that will return a fragment for each of the
-        // primary sections of the activity.
-        mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
-
-        // Set up the ViewPagers with the respective sections adapter.
-        mViewPager = findViewById(R.id.container_for_fragments);
-        mViewPager.setAdapter(mSectionsPagerAdapter);
+        }
     }
 
     @Override
@@ -137,11 +160,11 @@ public class LandingPage extends AppCompatActivity
         }
     }
 
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.three_dots_settings_menu, menu);
-
         return true;
     }
 
@@ -204,13 +227,17 @@ public class LandingPage extends AppCompatActivity
         }
     }
 
+
+
     @SuppressWarnings("StatementWithEmptyBody")
     @Override
     public boolean onNavigationItemSelected(MenuItem item) {
         // Handle navigation view item clicks here.
         int id = item.getItemId();
         switch (id) {
-            case R.id.nav_veganalytics:;
+            case R.id.nav_veganalytics:
+                Intent intentFoodWisdom = new Intent(this, FoodWisdom.class);
+                startActivity(intentFoodWisdom);
                 break;
             case R.id.nav_manual_entry:
                 chooseFromPicturesFolder();
@@ -220,9 +247,7 @@ public class LandingPage extends AppCompatActivity
             case R.id.nav_meal_mate:;
                 break;
             case R.id.nav_delete:
-                BitmapUtils.deleteFiles();
-                Toast.makeText(this, "All Vegan Buddy photos deleted from your phone",
-                        Toast.LENGTH_SHORT).show();
+                deletePhotoFilesFromPhone();
                 break;
             case R.id.nav_share_fb: shareOnFaceBook();
             break;
@@ -238,6 +263,20 @@ public class LandingPage extends AppCompatActivity
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
         return true;
+    }
+
+    private void deletePhotoFilesFromPhone() {
+        BitmapUtils.deleteFiles();
+
+        //Send broadcast intent to Media Scanner to update the gallery
+        //Todo: This is not working... Have to make the MediaScanner work better
+        Uri veganBuddyFolder = Uri.fromFile(BitmapUtils.getVeganBuddyFolder());
+        Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+        mediaScanIntent.setData(veganBuddyFolder);
+        this.sendBroadcast(mediaScanIntent);
+
+        Toast.makeText(getBaseContext(), "All Vegan Buddy photos " +
+                "deleted from your phone", Toast.LENGTH_SHORT).show();
     }
 
     private void chooseFromPicturesFolder() {
@@ -370,6 +409,21 @@ public class LandingPage extends AppCompatActivity
             //Set Profile Email
             TextView profileEmail = headerView.findViewById(R.id.userEmail);
             profileEmail.setText(thisAppUser.getEmail());
+
+            //Set Followers/Following data
+            TextView followers = headerView.findViewById(R.id.nhlp_followers);
+            TextView following = headerView.findViewById(R.id.nhlp_following);
+            if (thisAppUser.getMeFollowingCount() > 0) {
+                String stringFollowing = "Following: " + Integer.toString(thisAppUser.getMeFollowingCount());
+                following.setText(stringFollowing);
+            } else following.setText("Following: 0 ");
+            if (thisAppUser.getMyFollowersCount() > 0) {
+                String stringFollowers = "Followers: "
+                        + Integer.toString(thisAppUser.getMyFollowersCount());
+                followers.setText(stringFollowers);
+            } else followers.setText("Followers: 0 ");
+
+
         }catch (NullPointerException npe) {
             Log.e(LP_TAG, "Null pointer Exception happened while creating user profile");
             npe.printStackTrace();
@@ -403,12 +457,26 @@ public class LandingPage extends AppCompatActivity
 
     //FragmentInteraction Method for the new POSTs fragments
     @Override
-    public void onListFragmentInteraction(Post post, View v, int position) {
-        if (v.getId() == R.id.pi_heart_icon) heartClick(v, post);
-        if (v.getId() == R.id.pi_likes_count) numberofLikesClick(v, post);
-        if (v.getId() == R.id.pi_food_photo) photoClick(v);
-        if (v.getId() == R.id.pi_share_placard) shareThisPhoto(v);
+    public void onListFragmentInteraction(Post post, View v, int position, String postID) {
+        switch (v.getId())
+        {
+            case R.id.pi_heart_icon: heartClick(v, post);
+            break;
+            case R.id.pi_likes_count: numberofLikesClick(v, post);
+            break;
+            case R.id.pi_food_photo: photoClick(v);
+            break;
+            case R.id.pi_share_placard: shareThisPhoto(v);
+            break;
+            case R.id.pi_instagram_icon: postOnInstragram(post, v);
+            break;
+            case R.id.pi_comments_icon:commentsClick(v, postID, post.getMealPhotoThumbnailUri());
+            break;
+            case R.id.pi_comments_count:commentsClick(v, postID, post.getMealPhotoThumbnailUri());
+            break;
+        }
     }
+
 
     public void heartClick(View view, Post post) {
         boolean newValue = false;
@@ -423,9 +491,8 @@ public class LandingPage extends AppCompatActivity
         CardView viewGrandParent = (CardView) viewParent.getParent().getParent();
         TextView textViewUserName = viewGrandParent.findViewById(R.id.pi_profile_name);
 
-        //The firebase Uid is stored in the content description of the Profile Name textview or it
-        // is equal to CURRENT_USER for posts of thisAppUser
-        String userFirebaseID = textViewUserName.getContentDescription().toString();
+        //The postID  Uid is stored in the content description of the CardView
+        String thisPostID = viewGrandParent.getContentDescription().toString();
 
         TextView likesCount = viewGrandParent.findViewById(R.id.pi_likes_count);
         //The datetime unique PostID is stored in the content description on the CardView
@@ -443,29 +510,27 @@ public class LandingPage extends AppCompatActivity
         }
 
         //Update Like count based on the click
-        if (heartStatus == HEART_FULL) {
+        if (heartStatus.equals(HEART_FULL)) {
             //implies that currentValue of boolean "iLike" is true;
             newValue = false;
             newLikeCount = currentLikeCount - 1; //Reduce like by 1
         }
 
-        if (heartStatus == HEART_EMPTY) {
+        if (heartStatus.equals(HEART_EMPTY)) {
             //implies that currentValue of boolean "iLike" is false;
             newValue = true;
             newLikeCount = currentLikeCount + 1; //Increase like by 1
         }
 
         //Update Firebase Database
-        if(userFirebaseID.equals(CURRENT_USER)) //If Placard belongs to current user listing
-        FirebaseStorageUtils.updateIlike (dateTimeStampID, newValue, newLikeCount);
-        else {//If placard belongs to LAST POSTS listing
-            if (newValue)
-            FirebaseStorageUtils.addToMyLikes(dateTimeStampID, newValue, newLikeCount, userFirebaseID);
+        if (newValue)
+        FirebaseStorageUtils.addToMyFans(thisPostID, newLikeCount, post.getDatestamp(),
+                thisPostID.equals(post.getDatestamp())? POSTS_NODE:LAST_POSTS_NODE);
 
-            if (!newValue)
-                FirebaseStorageUtils.deleteFromMyLikes(dateTimeStampID, newValue, newLikeCount,
-                        userFirebaseID, post);
-        }
+        if (!newValue)
+            FirebaseStorageUtils.deleteFromMyFans(thisPostID, newLikeCount,post.getDatestamp(),
+                    thisPostID.equals(post.getDatestamp())? POSTS_NODE:LAST_POSTS_NODE);
+
     }
 
 
@@ -476,12 +541,7 @@ public class LandingPage extends AppCompatActivity
         } else return 0;
     }
 
-    public void commentsClick(View view) {
-        RelativeLayout viewParent = (RelativeLayout) view.getParent();
-        CardView viewGrandParent = (CardView) viewParent.getParent().getParent();
-        ImageView thisPhoto = viewGrandParent.findViewById(R.id.pi_food_photo);
-        String thisPhotoUri = thisPhoto.getContentDescription().toString();
-        String nodeID = viewGrandParent.getContentDescription().toString();
+    public void commentsClick(View view, String nodeID, String thisPhotoUri ) {
         retrieveCommentsData(nodeID);
 
         Intent commentsIntent = new Intent(this, CommentsActivity.class);
@@ -506,11 +566,35 @@ public class LandingPage extends AppCompatActivity
         startActivity(Intent.createChooser(shareIntent, "Share this photo..."));
     }
 
+    private void postOnInstragram(Post p, View v) {
+        Intent shareIntent = new Intent();
+        RelativeLayout viewParent = (RelativeLayout) v.getParent();
+        CardView viewGrandParent = (CardView) viewParent.getParent().getParent();
+        ImageView thisPhoto = viewGrandParent.findViewById(R.id.pi_food_photo);
+        Bitmap tempImage = ((BitmapDrawable)thisPhoto.getDrawable()).getBitmap();
+        File tempImageFile = createTempUploadFile(tempImage);
+        Uri tempImageFileUri = Uri.fromFile(tempImageFile);
+
+        shareIntent.setAction(Intent.ACTION_SEND);
+        shareIntent.setType("image/*");
+        shareIntent.putExtra(Intent.EXTRA_STREAM, tempImageFileUri);
+        shareIntent.setPackage("com.instagram.android");
+        startActivity(shareIntent);
+    }
+
     public void numberofLikesClick(View view, Post currentPost) {
-        //Create list of users from "likedMe"
-        //Todo: undo comment of below line
-        PostLikesActivity.setListOfUsers(currentPost.getMyFans());
+        RelativeLayout viewParent = (RelativeLayout) view.getParent();
+        CardView viewGrandParent = (CardView) viewParent.getParent().getParent();
+        String uniquePostID = viewGrandParent.getContentDescription().toString();
+
+        //if uniquePostID is equal to dateStamp of the post, then it belongs to fragment POSTS
+        // else it belongs to LASTPOSTS
+        String whichFragment = (uniquePostID.equals(currentPost.getDatestamp()))?
+                POSTS_NODE:LAST_POSTS_NODE;
+
         Intent intentPostLikes = new Intent(this, PostLikesActivity.class);
+        intentPostLikes.putExtra(POSTID, uniquePostID);
+        intentPostLikes.putExtra(ORIGIN_FRAGMENT, whichFragment);
         startActivity(intentPostLikes);
     }
 
@@ -536,6 +620,19 @@ public class LandingPage extends AppCompatActivity
         mViewPager.setCurrentItem(0, true);
     }
 
+    public void followingFollowersClick(View view) {
+        Intent intentFollow = new Intent(this, FollowActivity.class);
+        int relationship = -939;
+        switch (view.getId()){
+            case R.id.nhlp_followers: relationship = FOLLOWERS;
+            break;
+            case R.id.nhlp_following: relationship = FOLLOWING;
+            break;
+        }
+        intentFollow.putExtra(RELATION, relationship);
+        startActivity(intentFollow);
+    }
+
 
     /**
      * A {@link FragmentPagerAdapter} that returns a fragment corresponding to
@@ -551,11 +648,11 @@ public class LandingPage extends AppCompatActivity
         public Fragment getItem(int position) {
             // getItem is called to instantiate the fragment for the given page.
             switch (position) {
-                case 2: return PlacardsFragment.newInstance(1, NODE_FOR_ALL_POSTS );
-                case 3: return PlacardsFragment.newInstance(1, NODE_FOR_MY_POSTS);
-                case 4:
+                case LAST_PLACARDS_LAYOUT: return PlacardsFragment.newInstance(LAST_POSTS_NODE);
+                case MY_PLACARDS_LAYOUT: return PlacardsFragment.newInstance(POSTS_NODE);
+                case NOTIFICATIONS_INBOUND_LAYOUT:
                     return VnotificationFragment.newInstance(INBOUND);
-                case 5:
+                case NOTIFICATIONS_OUTBOUND_LAYOUT:
                     return VnotificationFragment.newInstance(OUTBOUND);
                 default:
                     return LandingPageFragment.newInstance(position);

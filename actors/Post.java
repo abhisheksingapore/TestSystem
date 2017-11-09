@@ -23,7 +23,6 @@ public class Post {
     private String veganPhilosophyText;
     private String locationText;
     private int likesCount;
-    private Map<String, PostFan> myFans = new HashMap<>();
     private int commentsCount;
     private boolean iLoveFlag;
     private boolean hasComments;
@@ -34,8 +33,7 @@ public class Post {
 
     public Post (String userPicUri, String username, String mealphoto, String dtStamp,
                  String mealThumb, String screenShot, String veganText, String locationText,
-                 int likecount, boolean loveflg, boolean comments, int commentsCount,
-                 Map<String, PostFan> whoLikedThisPost) {
+                 int likecount, boolean loveflg, boolean comments, int commentsCount) {
         this.userPhotoUri = userPicUri;
         this.veganPhilosophyText = veganText;
         this.datestamp = dtStamp;
@@ -48,7 +46,6 @@ public class Post {
         this.iLoveFlag = loveflg;
         this.hasComments = comments;
         this.commentsCount = commentsCount;
-        this.myFans = whoLikedThisPost;
     }
 
     public String getUserPhotoUri() {
@@ -79,6 +76,10 @@ public class Post {
         return likesCount;
     }
 
+    public void setiLoveFlag(boolean iLoveFlag) {
+        this.iLoveFlag = iLoveFlag;
+    }
+
     public boolean isiLoveFlag() {
         return iLoveFlag;
     }
@@ -99,16 +100,8 @@ public class Post {
         return locationText;
     }
 
-    public Map<String, PostFan> getMyFans() {
-        return myFans;
-    }
-
     public void setLikesCount(int likesCount) {
         this.likesCount = likesCount;
     }
 
-    public Post deleteLike(String userFirebaseIDphotoUrl) {
-        this.myFans.remove(userFirebaseIDphotoUrl);
-        return this;
-    }
 }

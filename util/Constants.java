@@ -1,9 +1,5 @@
 package me.veganbuddy.veganbuddy.util;
 
-import android.os.Build;
-
-import java.security.PublicKey;
-
 /**
  * Created by abhishek on 21/9/17.
  */
@@ -29,7 +25,6 @@ public final class Constants {
     //Constants for Landingpage.Java
     public static final int UPLOAD_PICTURE_MANUALLY = 1;
     public static final String LP_TAG = "LandingPage.Java";
-    public static final String CURRENT_USER = "currentUserPost";
     public static final String HEART_FULL = "heart full";
     public static final String HEART_EMPTY = "heart empty";
 
@@ -44,8 +39,8 @@ public final class Constants {
     //Static variables to decide which Fragment Layout is to be loaded
     public static final int ANIMALS_DASHBOARD_LAYOUT = 0;
     public static final int VEGAN_DASHBOARD_LAYOUT = 1;
-    public static final int PLACARD_LAYOUT = 2;
-    public static final int MY_PLACARD_LAYOUT = 3;
+    public static final int LAST_PLACARDS_LAYOUT = 2;
+    public static final int MY_PLACARDS_LAYOUT = 3;
     public static final int NOTIFICATIONS_INBOUND_LAYOUT = 4;
     public static final int NOTIFICATIONS_OUTBOUND_LAYOUT = 5;
 
@@ -90,7 +85,7 @@ public final class Constants {
     static final String SMU_TAG = "SocialMediaUtils.Java";
     static final String VEGAN_BUDDY_WEBSITE = "http://www.veganbuddy.me/";
 
-    //Constants for FirebaseStorageUtils.java
+    //Constants for FirebaseStorageUtils.java and Firebase Database calls
     final static String FB_ERROR_TAG = "FIREBASESTORAGEUTILS";
     final static String STATISTICS_IMAGES_FOLDER = "/animal_statistics/";
     final static String SUPPORTED_FILE_EXTENSION = ".png";
@@ -100,12 +95,16 @@ public final class Constants {
     final static boolean INCREASE_BY_ONE = true ;
     final static String COMMENTS_NODE = "comments";
     final static String COMMENTS_COUNT_NODE = "commentsCount";
-    final static String POSTS_NODE = "posts";
-    final static String LAST_POSTS_NODE = "lastPosts";
+    final static String MY_LIKES_NODE = "myLikes";
     final static String V_COINS_NODE = "vCoins";
+    final static String LIKES_COUNT_NODE = "likesCount";
+    public final static String POSTS_NODE = "posts";
+    public final static String LAST_POSTS_NODE = "lastPosts";
     public final static String V_NOTIFICATIONS_NODE = "vNotifications";
     public final static String PROFILE_NODE = "profile";
     public final static String DASHBOARD_NODE = "dashboard";
+    public static final String POST_FAN_NODE = "myPostFans";
+
 
     public final static boolean DO_NOT_INCREASE = false;
     public final static String DEFAULT_VEGAN_DATE = "start";
@@ -162,8 +161,6 @@ public final class Constants {
 
     //Constants for PlacardsFragment.java
     public static final String PF_TAG = "PlacardsFragment.java";
-    public static final String NODE_FOR_ALL_POSTS = "lastPosts";
-    public static final String NODE_FOR_MY_POSTS = "posts";
     public final static int NUMBER_OF_POSTS_TO_RETRIEVE = 20;//Todo: implement 'Pull Down' 'refresh' and 'add-more'
     public final static String DATE_STAMP_KEY_NAME = "datestamp";
 
@@ -184,4 +181,24 @@ public final class Constants {
 
     public static final int SHOW_CAMERA = 0;
     public static final int SHOW_PROGRESS = 1;
+
+    //Constants for Buddy.java
+    public static final String PFan_TAG = "Buddy.java";
+    public static final String LIKED = "LIKED";
+
+    //Constants for PostLikesActivity.java
+    public static final String Plikes_TAG = "PostLikesActivity.java";
+    public static final String POSTID = "postID";
+    public static final String ORIGIN_FRAGMENT = "originFragment";
+    public static final String FOLLOWING_NODE = "meFollowing";
+    public static final String FOLLOWERS_NODE = "myFollowers";
+
+    //Constants for FollowActivity.java
+    public static final int FOLLOWING = 1;
+    public static final int FOLLOWERS = 0;
+    public static final String FOLLOWERS_COUNT_NODE = "myFollowersCount";
+    public static final String FOLLOWING_COUNT_NODE = "meFollowingCount";
+    public static final String RELATION = "Relation";
+    public static final String FA_TAG = "FollowActivity";
+
 }

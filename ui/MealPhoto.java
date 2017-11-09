@@ -181,7 +181,6 @@ public class MealPhoto extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        retrieveStatsImageUri();
     }
 
     @Override
@@ -216,6 +215,8 @@ public class MealPhoto extends AppCompatActivity {
                 Log.v(MP_TAG, "Vegan Message file for the day is: " + getNextPicName() +
                         " \n And Vegan Message for the day is: " + getAppMessage());
             }
+            //load appMessagePic
+            retrieveStatsImageUri();
             //show the imageview once meal photo thumbnail and appMessagePic are loaded
             updateUI(SHOW_MEAL_PHOTO);
         }

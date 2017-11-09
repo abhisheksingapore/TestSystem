@@ -5,6 +5,7 @@ import android.net.Uri;
 import android.support.v7.widget.CardView;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -23,9 +24,8 @@ import me.veganbuddy.veganbuddy.ui.PlacardsFragment.OnListFragmentInteractionLis
 import me.veganbuddy.veganbuddy.util.DateAndTimeUtils;
 
 import java.util.List;
-import java.util.Map;
 
-import static me.veganbuddy.veganbuddy.util.Constants.CURRENT_USER;
+
 import static me.veganbuddy.veganbuddy.util.Constants.HEART_EMPTY;
 import static me.veganbuddy.veganbuddy.util.Constants.HEART_FULL;
 import static me.veganbuddy.veganbuddy.util.Constants.NO_COMMENT;
@@ -41,16 +41,15 @@ import static me.veganbuddy.veganbuddy.util.Constants.ONE_LIKE;
 public class PlacardsRecyclerViewAdapter extends RecyclerView.Adapter<PlacardsRecyclerViewAdapter.PlacardHolder> {
 
     private List<Post> listofPosts;
-    private List<String> listOfUsers;
-    private  Map <String, String> myLikes;
+    private List<String> listOfPostIDs;
 
     private final OnListFragmentInteractionListener mListener;
     private Context thisContext;
 
-    PlacardsRecyclerViewAdapter(List<Post> postList, List<String> userFirebaseIDs, OnListFragmentInteractionListener listener) {
+    PlacardsRecyclerViewAdapter(List<Post> postList, List<String> postIDs, OnListFragmentInteractionListener listener) {
         listofPosts = postList;
         mListener = listener;
-        listOfUsers = userFirebaseIDs;
+        listOfPostIDs = postIDs;
     }
 
     @Override
@@ -64,10 +63,10 @@ public class PlacardsRecyclerViewAdapter extends RecyclerView.Adapter<PlacardsRe
     @Override
     public void onBindViewHolder(final PlacardHolder placard, final int position) {
         final int positionOfPost = listofPosts.size() - position - 1;
+        String postID = listOfPostIDs.get(positionOfPost);
+
         Post currentPost = listofPosts.get(positionOfPost);
-
         placard.postCurrent = currentPost;
-
         if (currentPost == null) return;
         if (currentPost.getUserName()==null) {
             FirebaseCrash.log("User name not found in the database for this person");
@@ -75,43 +74,17 @@ public class PlacardsRecyclerViewAdapter extends RecyclerView.Adapter<PlacardsRe
         }
 
         placard.userName.setText(currentPost.getUserName());
+        placard.thisPlacard.setContentDescription(postID);// This is critical as it will be used to
+        // identify the post to update later
 
-        //Check listOfUsers to see if this RecyclerViewAdapter is for this users POSTS
-        // or for lastPOSTS. if just for users posts then set the placard Content Description and
-        // hearts. Else do it as per the requirements of lastPosts....
-        if (listOfUsers==null || listOfUsers.size() == 0) {
-            placard.userName.setContentDescription(CURRENT_USER);
-            if (currentPost.isiLoveFlag()){
-                placard.iLove.setImageDrawable(thisContext.getDrawable(R.drawable.heart_full));
-                placard.iLove.setContentDescription(HEART_FULL);
-            } else {
-                placard.iLove.setImageDrawable(thisContext.getDrawable(R.drawable.heart_empty));
-                placard.iLove.setContentDescription(HEART_EMPTY);
-            }
-        }
-        else {
-            String userFirebaseID = listOfUsers.get(positionOfPost);
-            placard.userName.setContentDescription(userFirebaseID);
-
-            //set the value of "iLike" to false with empty heart
+        if (currentPost.isiLoveFlag()){
+            placard.iLove.setImageDrawable(thisContext.getDrawable(R.drawable.heart_full));
+            placard.iLove.setContentDescription(HEART_FULL);
+        } else {
             placard.iLove.setImageDrawable(thisContext.getDrawable(R.drawable.heart_empty));
             placard.iLove.setContentDescription(HEART_EMPTY);
-
-            //check if the myLikes Map is null
-            if (myLikes!=null){
-                //check if the Map myLikes is not empty then if key for the other user is found in
-                // the myLikes of thisAppUser
-                if (myLikes.size() !=0 || myLikes.containsKey(userFirebaseID)) {
-                    //if yes, then check if this post is found in the myLikes of thisAppUser
-                    if (myLikes.containsValue(currentPost.getDatestamp())) {
-                        //if yes, then change to full heart with appropriate content description
-                        placard.iLove.setImageDrawable(thisContext.getDrawable(R.drawable.heart_full));
-                        placard.iLove.setContentDescription(HEART_FULL);
-                    }
-                }
-            }
         }
-        placard.thisPlacard.setContentDescription(currentPost.getDatestamp());
+
 
         //Retrieve the URI of the Profile picture and then insert it into the imageView using Picasso
         Uri profilePicUri = Uri.parse(currentPost.getUserPhotoUri());
@@ -125,9 +98,9 @@ public class PlacardsRecyclerViewAdapter extends RecyclerView.Adapter<PlacardsRe
         //Retrieve the URI of the fullsize of the meal Screenshot and...
         //...insert into the content description of the picture. This URI will be used to display
         // the "full image" on click of the thumbnail.
-        Uri mealphotouri = Uri.parse(currentPost.getMealPhotoThumbnailUri());
-        placard.mealPhoto.setContentDescription(currentPost.getScreenShotUri());
-        Picasso.with(thisContext).load(mealphotouri).into(placard.mealPhoto);
+        Uri mealphotoThumbUri = Uri.parse(currentPost.getMealPhotoThumbnailUri());
+        placard.mealScreenShot.setContentDescription(currentPost.getScreenShotUri());
+        Picasso.with(thisContext).load(mealphotoThumbUri).into(placard.mealScreenShot);
 
         int likeCount = currentPost.getLikesCount();
         switch (likeCount) {
@@ -170,44 +143,37 @@ public class PlacardsRecyclerViewAdapter extends RecyclerView.Adapter<PlacardsRe
             }
         });
 
+        View.OnClickListener placardOnClickListener = new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mListener.onListFragmentInteraction(placard.postCurrent, v, positionOfPost,
+                        placard.thisPlacard.getContentDescription().toString());
+            }
+        };
 
         //Set an OnClickListener on the 'heart' icon for the change to "like" status of this post
-        placard.iLove.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (null != mListener) {
-                    // Notify the active callbacks interface (the activity, if the
-                    // fragment is attached to one) that an item has been selected.
-                    mListener.onListFragmentInteraction(placard.postCurrent, v, positionOfPost);
-                }
-            }
-        });
+        placard.iLove.setOnClickListener(placardOnClickListener);
+
 
         //Set an OnClickListener on the 'likesCount' to see who has liked my post
-        placard.likes.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (null != mListener) {
-                    // Notify the active callbacks interface (the activity, if the
-                    // fragment is attached to one) that an item has been selected.
-                    mListener.onListFragmentInteraction(placard.postCurrent, v, positionOfPost);
-                }
-            }
-        });
+        placard.likes.setOnClickListener(placardOnClickListener);
 
         //Set an OnClickListener on the 'mealPhoto' to Zoom into the full picture
-        placard.mealPhoto.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (null != mListener) {
-                    // Notify the active callbacks interface (the activity, if the
-                    // fragment is attached to one) that an item has been selected.
-                    mListener.onListFragmentInteraction(placard.postCurrent, v, positionOfPost);
-                }
-            }
-        });
+        placard.mealScreenShot.setOnClickListener(placardOnClickListener);
 
+        //Set an OnClickListener on the 'share' icon to share this placard on other apps
+        placard.shareImage.setOnClickListener(placardOnClickListener);
+
+        //Set an OnClickListener on the 'instagram' icon to share this placard on instagram
+        placard.instagramShare.setOnClickListener(placardOnClickListener);
+
+        //Set an OnClickListener on the 'comment' icon and "commentsCount" TextView
+        // to add comments about this placard
+        placard.commentsCount.setOnClickListener(placardOnClickListener);
+        placard.myComments.setOnClickListener(placardOnClickListener);
     }
+
+
 
     @Override
     public int getItemCount() {
@@ -215,19 +181,14 @@ public class PlacardsRecyclerViewAdapter extends RecyclerView.Adapter<PlacardsRe
         else return listofPosts.size();
     }
 
-    public void updateMyLikes(Map<String, String> myLikes) {
-        this.myLikes = myLikes;
-        notifyDataSetChanged();
-    }
 
-    public void updateLists(List <Post> listofPosts, List <String> listOfUsers) {
+    void updateLists(List <Post> listofPosts, List <String> listOfPostIds) {
         this.listofPosts = listofPosts;
-        if (listOfUsers != null ) {
-            this.listOfUsers = listOfUsers;
+        if (listOfPostIds != null ) {
+            this.listOfPostIDs = listOfPostIds;
         }
         notifyDataSetChanged();
     }
-
 
     //Inner Viewholder class for showing the posts
     public class PlacardHolder extends RecyclerView.ViewHolder {
@@ -238,13 +199,14 @@ public class PlacardsRecyclerViewAdapter extends RecyclerView.Adapter<PlacardsRe
         TextView userName;
         CircleImage profilePic;
         TextView timeDifference;
-        ImageView mealPhoto;
+        ImageView mealScreenShot;
         TextView likes;
         ImageView iLove;
         ImageView myComments;
         TextView commentsCount;
         ImageView shareImage;
         Toolbar placardMenu;
+        ImageView instagramShare;
 
         PlacardHolder(View view) {
             super(view);
@@ -254,13 +216,14 @@ public class PlacardsRecyclerViewAdapter extends RecyclerView.Adapter<PlacardsRe
             this.userName = view.findViewById(R.id.pi_profile_name);
             this.profilePic = view.findViewById(R.id.pi_profile_picture);
             this.timeDifference = view.findViewById(R.id.pi_timestamp);
-            this.mealPhoto = view.findViewById(R.id.pi_food_photo);
+            this.mealScreenShot = view.findViewById(R.id.pi_food_photo);
             this.likes = view.findViewById(R.id.pi_likes_count);
             this.iLove = view.findViewById(R.id.pi_heart_icon);
             this.myComments = view.findViewById(R.id.pi_comments_icon);
             this.commentsCount = view.findViewById(R.id.pi_comments_count);
             this.shareImage = view.findViewById(R.id.pi_share_placard);
             this.placardMenu = view.findViewById(R.id.pi_card_menu_toolbar);
+            this.instagramShare = view.findViewById(R.id.pi_instagram_icon);
 
         }
 
