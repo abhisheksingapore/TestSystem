@@ -1,15 +1,12 @@
 package me.veganbuddy.veganbuddy.actors;
 
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
 import me.veganbuddy.veganbuddy.util.DateAndTimeUtils;
 
 import static me.veganbuddy.veganbuddy.util.Constants.DEFAULT_STATS_PIC_NAME;
-import static me.veganbuddy.veganbuddy.util.Constants.DEFAULT_VEGAN_DATE;
 import static me.veganbuddy.veganbuddy.util.DateAndTimeUtils.dateStamp;
-import static me.veganbuddy.veganbuddy.util.DateAndTimeUtils.dateStampHumanReadable;
 import static me.veganbuddy.veganbuddy.util.DateAndTimeUtils.dateofToday;
 import static me.veganbuddy.veganbuddy.util.DateAndTimeUtils.thisMonthString;
 import static me.veganbuddy.veganbuddy.util.DateAndTimeUtils.thisWeekString;
@@ -28,7 +25,6 @@ public class Dashboard {
     private int mealsForToday = 0;
     private int mealsForLifetime = 0;
 
-    private String startDateOfVegan = DEFAULT_VEGAN_DATE; //default
     private String lastPicName = DEFAULT_STATS_PIC_NAME;
     
     private Map <String, Integer> mealsForTheDay = new HashMap<>();
@@ -46,7 +42,6 @@ public class Dashboard {
         if (mealForToday==0) {
             this.mealsForLifetime = mealForToday;
             this.mealsForToday = mealForToday;
-            this.startDateOfVegan = dateStampHumanReadable();
             this.lastPicName = DEFAULT_STATS_PIC_NAME;
             this.mealsForTheDay.put(dateofToday(), mealForToday);
             this.mealsForTheWeek.put(thisWeekString(), mealForToday);
@@ -63,8 +58,6 @@ public class Dashboard {
         } else {
             mealsForToday = 1;
         }
-        if (startDateOfVegan.equals(DEFAULT_VEGAN_DATE) || startDateOfVegan == null)
-            this.startDateOfVegan = dateStampHumanReadable();
         this.lastPicName = getNextPicName();
         incrementMealsForTheDay(getTodaysCurrentValue());
         incrementMealsForTheMonth(getThisMonthCurrentValue());
@@ -76,6 +69,10 @@ public class Dashboard {
     private boolean notFirstMealOfToday() {
         String dateofTodayStr = dateStamp();
         return mealsForTheDay.containsKey(dateofTodayStr);
+    }
+
+    public int mealForDate(String dateString) {
+        return mealsForTheDay.get(dateString);
     }
 
     public boolean todayExistsInDashboard(){
@@ -149,20 +146,16 @@ public class Dashboard {
         }
     }
 
+    //////////Get Methods for each of the Dashboard variables/////////////
+    public int getMealsForToday() {
+        return mealsForToday;
+    }
+
     public void setMealsForToday(int mealsForToday) {
         this.mealsForToday = mealsForToday;
 
         //check if it is first meal of the day, if yes, then initialize today's date in mealsForTheDay
         if (mealsForToday ==0 ) this.mealsForTheDay.put(dateofToday(), mealsForToday);
-    }
-
-    public void setLastPicName(String lastPicName) {
-        this.lastPicName = lastPicName;
-    }
-
-    //////////Get Methods for each of the Dashboard variables/////////////
-    public int getMealsForToday() {
-        return mealsForToday;
     }
 
     public int getMealsForLifetime() {
@@ -185,14 +178,12 @@ public class Dashboard {
         return mealsForTheWeek;
     }
 
-    public String getStartDateOfVegan() {
-         if (startDateOfVegan.equals(DEFAULT_VEGAN_DATE) || startDateOfVegan == null)
-             this.startDateOfVegan = dateStampHumanReadable();
-         return startDateOfVegan;
-    }
-
     public String getLastPicName() {
         return lastPicName;
+    }
+
+    public void setLastPicName(String lastPicName) {
+        this.lastPicName = lastPicName;
     }
 
 }

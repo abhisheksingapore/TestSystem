@@ -1,7 +1,6 @@
 package me.veganbuddy.veganbuddy.util;
 
 import android.content.Context;
-import android.content.Intent;
 import android.net.Uri;
 import android.util.Log;
 
@@ -30,19 +29,16 @@ import com.twitter.sdk.android.core.services.MediaService;
 import com.twitter.sdk.android.core.services.StatusesService;
 
 import java.io.File;
-import java.net.URL;
 import java.util.List;
 
-import me.veganbuddy.veganbuddy.R;
-import me.veganbuddy.veganbuddy.ui.PinterestLoginActivity;
 import okhttp3.MediaType;
 import okhttp3.RequestBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-
 import static me.veganbuddy.veganbuddy.util.Constants.SMU_TAG;
+import static me.veganbuddy.veganbuddy.util.Constants.VEGAN_BUDDY_HASHTAG;
 import static me.veganbuddy.veganbuddy.util.Constants.VEGAN_BUDDY_PIN_BOARD;
 import static me.veganbuddy.veganbuddy.util.Constants.VEGAN_BUDDY_WEBSITE;
 
@@ -98,20 +94,20 @@ public class SocialMediaUtils {
 
     public static boolean loginToFaceBook() {
         AccessToken token = AccessToken.getCurrentAccessToken();
-        if((token != null) && !(token.isExpired())) return true;  //checking both for login status and expired status of the token
-        else return false;
+        //checking both for login status and expired status of the token
+        return (token != null) && !(token.isExpired());
     }
 
     private static void uplodPhotoToFaceBook(Uri screenShotURI, String userCaption) {
         SharePhoto photo = new SharePhoto.Builder()
                 .setImageUrl(screenShotURI)
-                .setCaption(userCaption)
+                .setCaption(VEGAN_BUDDY_HASHTAG + userCaption)
                 .setUserGenerated(true)
                 .build();
 
         SharePhotoContent content = new SharePhotoContent.Builder()
                 .addPhoto(photo)
-                .build(); //Todo:Add a hashtag
+                .build();
 
         ShareApi.share(content, new FacebookCallback<Sharer.Result>() {
             @Override
@@ -176,7 +172,7 @@ public class SocialMediaUtils {
     }
 
     private static void createTweetFromMedia(String veganPhilosophyText, StatusesService statusesService) {
-        Call<Tweet> call = statusesService.update(" #everyMealCounts #vegan " + veganPhilosophyText
+        Call<Tweet> call = statusesService.update(VEGAN_BUDDY_HASHTAG + " #vegan " + veganPhilosophyText
                         + " @theVeganBuddy", null, null,
                 null, null, null, null,
                 null, getMediaIDforTwitter());
@@ -204,7 +200,7 @@ public class SocialMediaUtils {
     public static void initializePinterest(Context context, String pinterestAppID){
         pdkClient = PDKClient.configureInstance(context, pinterestAppID);
         pdkClient.onConnect(context);
-        pdkClient.setDebugMode(true);
+        PDKClient.setDebugMode(true);
         pdkClient.getMe(new PDKCallback() {
             @Override
             public void onSuccess(PDKResponse response) {
@@ -281,7 +277,7 @@ public class SocialMediaUtils {
     }
 
     private static void createPin(String boardID) {
-        pdkClient.createPin (veganText,boardID,
+        pdkClient.createPin(VEGAN_BUDDY_HASHTAG + veganText, boardID,
                 BitmapUtils.getScreenShotURL(),
                 VEGAN_BUDDY_WEBSITE,
                 new PDKCallback() {

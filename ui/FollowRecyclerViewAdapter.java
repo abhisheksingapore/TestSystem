@@ -1,7 +1,6 @@
 package me.veganbuddy.veganbuddy.ui;
 
 import android.content.Context;
-import android.net.Uri;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -10,10 +9,8 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.jackandphantom.circularimageview.CircleImage;
-import com.squareup.picasso.MemoryPolicy;
 import com.squareup.picasso.Picasso;
 
 import java.util.HashMap;
@@ -23,6 +20,7 @@ import java.util.Map;
 import me.veganbuddy.veganbuddy.R;
 import me.veganbuddy.veganbuddy.actors.Buddy;
 
+import static me.veganbuddy.veganbuddy.util.CommonMethods.containsID;
 import static me.veganbuddy.veganbuddy.util.Constants.FOLLOWERS;
 import static me.veganbuddy.veganbuddy.util.Constants.FOLLOWING;
 import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.addMeAsFollowerData;
@@ -42,14 +40,28 @@ public class FollowRecyclerViewAdapter
     Context contextFRVA;
     int relationship;
 
-    public FollowRecyclerViewAdapter(List <Buddy> list, int relation, List<Buddy> follow) {
-        buddyList = list;
+    FollowRecyclerViewAdapter(List<Buddy> followerslist, int relation, List<Buddy> followinglist) {
+        switch (relation) {
+            case FOLLOWERS:
+                buddyList = followerslist;
+                break;
+            case FOLLOWING:
+                buddyList = followinglist;
+                break;
+        }
         relationship = relation;
-        following = follow;
+        following = followinglist;
     }
 
-    public void setBuddyList(List<Buddy> list, List <Buddy> meFollowing) {
-        buddyList = list;
+    void setBuddyList(List<Buddy> list, List<Buddy> meFollowing) {
+        switch (relationship) {
+            case FOLLOWERS:
+                buddyList = list;
+                break;
+            case FOLLOWING:
+                buddyList = meFollowing;
+                break;
+        }
         following = meFollowing;
         notifyDataSetChanged();
     }
@@ -82,15 +94,14 @@ public class FollowRecyclerViewAdapter
 
         fellowBuddy.userName.setText(buddyThis.getName());
 
-        Picasso.with(contextFRVA).setLoggingEnabled(true);//Todo: Debug profile photo random behaviour
         Picasso.with(contextFRVA).load(buddyThis.getPhotoUrl())
                 .placeholder(R.drawable.vegan_buddy_menu_icon).error(R.drawable.ic_info_black_24dp)
                 .into(fellowBuddy.userPhoto);
         fellowBuddy.userPhoto.setContentDescription(buddyThis.getPhotoUrl());
 
         switch (relationship) {
-            case FOLLOWERS: //Todo: check if the follower is also being followed
-                if (following!=null && following.contains(buddyThis)){
+            case FOLLOWERS:
+                if (following != null && containsID(following, buddyThis.buddyID)) {
                     fellowBuddy.buttonFollow.setVisibility(View.VISIBLE);
                     fellowBuddy.buttonFollow.setText(R.string.ip_unfollow_button);
                     fellowBuddy.buttonFollow.setBackgroundColor(ContextCompat
@@ -130,17 +141,20 @@ public class FollowRecyclerViewAdapter
                 if (followAction.equals(contextFRVA.getString(R.string.ip_follow_button))) {
                     Map<String, Buddy> meFollowingUser = new HashMap<>();
                     meFollowingUser.put(buttonClicked.getContentDescription().toString(),buddyLeader);
-                    //add to database under thisAppUser "Following"
+                    //add to database under thisAppUser "meFollowing"
                     addMeFollowingData(meFollowingUser);
 
-                    //add thisAppUser to database as a "Follower"
+                    //add thisAppUser to database as a "myFollower"
                     Map<String, Buddy> meAsFollower = new HashMap<>();
                     meAsFollower.put(thisAppUser.getFireBaseID(), buddyMe);
                     addMeAsFollowerData(fellowBuddy.userID, meAsFollower);
 
+                    //change button view
+                    buttonClicked.setText(R.string.ip_unfollow_button);
+                    fellowBuddy.buttonFollow.setBackgroundColor(ContextCompat
+                            .getColor(contextFRVA, R.color.whiteColor));
 
-                    //Todo: create vNotification for "the Follower" and "the Followed"
-                }
+                } else
 
                 if (followAction.equals(contextFRVA.getString(R.string.ip_unfollow_button))) {
                     String meFollowingUser = buttonClicked.getContentDescription().toString();
@@ -150,7 +164,10 @@ public class FollowRecyclerViewAdapter
                     //remove thisAppUser from database as a "Follower"
                     deleteMeAsFollowerData(meFollowingUser, thisAppUser.getFireBaseID());
 
-                    //Todo:delete vNotification for "the Follower" and "the Followed"
+                    //change button view
+                    buttonClicked.setText(R.string.ip_follow_button);
+                    buttonClicked.setBackgroundColor(ContextCompat
+                            .getColor(contextFRVA, R.color.colorBackground));
                 }
 
             }
@@ -162,6 +179,7 @@ public class FollowRecyclerViewAdapter
         if (buddyList == null || buddyList.size()==0) return 1;
         else return buddyList.size();
     }
+
 
     class BuddyView extends RecyclerView.ViewHolder {
 

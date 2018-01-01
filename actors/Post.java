@@ -1,31 +1,25 @@
 package me.veganbuddy.veganbuddy.actors;
 
-import android.net.Uri;
-
-import java.security.PublicKey;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import me.veganbuddy.veganbuddy.util.DateAndTimeUtils;
-
 /**
  * Created by abhishek on 2/9/17.
  */
 
 public class Post {
-    private String userPhotoUri; //Todo: Remove Suffix Uri from Strings
-    private String userName;
-    private String datestamp; // = DATE_STAMP_KEY_NAME in Constants file
-    private String mealPhotoUri;
-    private String mealPhotoThumbnailUri;
-    private String screenShotUri;
-    private String veganPhilosophyText;
-    private String locationText;
-    private int likesCount;
-    private int commentsCount;
-    private boolean iLoveFlag;
-    private boolean hasComments;
+    public String userPhotoUri; //Todo: Remove Suffix Uri from Strings
+    public String userName;
+    public String datestamp; // = DATE_STAMP_KEY_NAME in Constants file
+    public String mealPhotoUri;
+    public String mealPhotoThumbnailUri;
+    public String screenShotUri;
+    public String veganPhilosophyText;
+    public String locationText;
+    public int likesCount;
+    public int commentsCount;
+    public boolean iLoveFlag;
+    public boolean hasComments;
+    public boolean isSharedOnFaceBook;
+    public boolean isSharedOnTwitter;
+    public boolean isSharedOnPinterest;
 
     public Post() {
         //Empty Default Constructor required for Firebase to function
@@ -33,7 +27,8 @@ public class Post {
 
     public Post (String userPicUri, String username, String mealphoto, String dtStamp,
                  String mealThumb, String screenShot, String veganText, String locationText,
-                 int likecount, boolean loveflg, boolean comments, int commentsCount) {
+                 int likecount, boolean loveflg, boolean comments, int commentsCount,
+                 boolean facebook, boolean twitter, boolean pinterest) {
         this.userPhotoUri = userPicUri;
         this.veganPhilosophyText = veganText;
         this.datestamp = dtStamp;
@@ -46,6 +41,9 @@ public class Post {
         this.iLoveFlag = loveflg;
         this.hasComments = comments;
         this.commentsCount = commentsCount;
+        this.isSharedOnFaceBook = facebook;
+        this.isSharedOnTwitter = twitter;
+        this.isSharedOnPinterest = pinterest;
     }
 
     public String getUserPhotoUri() {
@@ -76,12 +74,16 @@ public class Post {
         return likesCount;
     }
 
-    public void setiLoveFlag(boolean iLoveFlag) {
-        this.iLoveFlag = iLoveFlag;
+    public void setLikesCount(int likesCount) {
+        this.likesCount = likesCount;
     }
 
     public boolean isiLoveFlag() {
         return iLoveFlag;
+    }
+
+    public void setiLoveFlag(boolean iLoveFlag) {
+        this.iLoveFlag = iLoveFlag;
     }
 
     public boolean isHasComments() {
@@ -100,8 +102,27 @@ public class Post {
         return locationText;
     }
 
-    public void setLikesCount(int likesCount) {
-        this.likesCount = likesCount;
+    public boolean isSharedOnFaceBook() {
+        return isSharedOnFaceBook;
     }
 
+    public void setSharedOnFaceBook(boolean sharedOnFaceBook) {
+        isSharedOnFaceBook = sharedOnFaceBook;
+    }
+
+    public boolean isSharedOnTwitter() {
+        return isSharedOnTwitter;
+    }
+
+    public void setSharedOnTwitter(boolean sharedOnTwitter) {
+        isSharedOnTwitter = sharedOnTwitter;
+    }
+
+    public boolean isSharedOnPinterest() {
+        return isSharedOnPinterest;
+    }
+
+    public void setSharedOnPinterest(boolean sharedOnPinterest) {
+        isSharedOnPinterest = sharedOnPinterest;
+    }
 }

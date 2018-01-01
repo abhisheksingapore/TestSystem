@@ -1,16 +1,20 @@
 package me.veganbuddy.veganbuddy.ui;
 
 
+import android.Manifest;
 import android.annotation.TargetApi;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
-import android.support.annotation.NonNull;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.ProgressBar;
@@ -21,7 +25,6 @@ import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.auth.api.signin.GoogleSignInResult;
 import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.SignInButton;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -38,7 +41,6 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
-
 import bolts.AppLinks;
 import me.veganbuddy.veganbuddy.R;
 import me.veganbuddy.veganbuddy.actors.Dashboard;
@@ -47,6 +49,7 @@ import me.veganbuddy.veganbuddy.actors.User;
 import static me.veganbuddy.veganbuddy.util.Constants.DASHBOARD_NODE;
 import static me.veganbuddy.veganbuddy.util.Constants.LOGIN_TAG;
 import static me.veganbuddy.veganbuddy.util.Constants.NOTIFICATION_CHANNEL_ID;
+import static me.veganbuddy.veganbuddy.util.Constants.PERMISSIONS;
 import static me.veganbuddy.veganbuddy.util.Constants.PROFILE_NODE;
 import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.mFirebaseAuth;
 import static me.veganbuddy.veganbuddy.util.GlobalVariables.googleApiClient;
@@ -64,11 +67,10 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
     private ProgressBar signInProgressBar;
     private SignInButton signInButton;
     private FirebaseUser mFirebaseUser;
+    private boolean internetPermission;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        FirebaseDatabase.getInstance().setPersistenceEnabled(true);
-
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_login);
@@ -90,18 +92,41 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
             Toast.makeText(this, "App Link Target URL: " + targetUrl.toString(), Toast.LENGTH_SHORT).show();
         }
 
+        checkPermissions();
+
         showProgressBarAndBackgroundImage();
         prepareGoogleAuthComponents();
         createNotificationChannel();
     }
 
-    private void checkInternetConnection() {
-        if (!internetIsAvailable(this)) {
-            Toast.makeText(this, "No internet detected. Please" +
-                    " check your internet connection. And try again", Toast.LENGTH_SHORT).show();
-            updateUI();
+    private void checkPermissions() {
+        int permissionCheck = ContextCompat
+                .checkSelfPermission(this, Manifest.permission.INTERNET);
+        if (permissionCheck == PackageManager.PERMISSION_GRANTED) internetPermission = true;
+        else {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.INTERNET}, PERMISSIONS);
         }
     }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSIONS) {
+            if (grantResults.length > 0) {
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED)
+                    internetPermission = true;
+            }
+        } else
+            Toast.makeText(this, "App will not work well without Internet", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+    }
+
 
 
     @TargetApi(26)
@@ -134,12 +159,12 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
         mFirebaseUser = mFirebaseAuth.getCurrentUser();
         if (mFirebaseUser!=null) {
             String firebaseUID = mFirebaseUser.getUid();
-            Toast.makeText(this, "Welcome! " + mFirebaseUser.getDisplayName(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Welcome! " + mFirebaseUser.getDisplayName(),
+                    Toast.LENGTH_SHORT).show();
             checkUserLoginAndRetrieveDataFromFirebase(firebaseUID);
         } else {
             updateUI();
         }
-        checkInternetConnection();
     }
 
     private void prepareGoogleAuthComponents() {
@@ -165,7 +190,7 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
     //Method to update the UI once the currentUser is authenticated either prior to start of
     // the activity or after
     public void updateUI() {
-        if (thisAppUser != null && internetIsAvailable(this)) {
+        if (thisAppUser != null) {
             retrieveUserAppData();
         } else {
             hideProgressBarAndBackgroundImage();
@@ -197,7 +222,6 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
             case R.id.google_sign_in_button:
                 signInButton.setVisibility(View.GONE);
                 googleSignIn();
-                checkInternetConnection();
                 break;
         }
     }
@@ -276,7 +300,7 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
     private void checkUserLoginAndRetrieveDataFromFirebase (String username) {
         if (username != null) {
             FirebaseDatabase mDatabase = FirebaseDatabase.getInstance();
-            DatabaseReference myRef = mDatabase.getReference(username);
+            final DatabaseReference myRef = mDatabase.getReference(username);
             retrieveUserProfile(myRef);
             retrieveUserDashboard(myRef);
         }
@@ -291,7 +315,7 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
                     //to catch the odd condition where some data is present for the user node
                     // except FirebaseID
                     if (thisAppUser.getFireBaseID() == null) {
-                        thisAppUser = new User(mFirebaseUser);
+                        thisAppUser.setFireBaseID(dataSnapshot.getKey());
                     }
                 } else {
                     thisAppUser = new User(mFirebaseUser);
@@ -350,5 +374,6 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
         //Create "dashboard" node
         myRef.child(DASHBOARD_NODE).setValue(firstDashboard);
     }
+
 
 }

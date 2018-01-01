@@ -1,58 +1,74 @@
 package me.veganbuddy.veganbuddy.ui;
 
 import android.Manifest;
-import android.app.ActivityManager;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.media.MediaActionSound;
 import android.net.Uri;
+import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageButton;
-import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.crash.FirebaseCrash;
-import com.wonderkiln.camerakit.CameraListener;
+import com.google.firebase.storage.StorageReference;
+import com.squareup.picasso.Picasso;
+import com.wonderkiln.camerakit.CameraKitEventCallback;
+import com.wonderkiln.camerakit.CameraKitImage;
 import com.wonderkiln.camerakit.CameraView;
 
 import me.veganbuddy.veganbuddy.R;
+import me.veganbuddy.veganbuddy.services.FetchPlacesIntentService;
 import me.veganbuddy.veganbuddy.util.BitmapUtils;
 
 import static com.wonderkiln.camerakit.CameraKit.Constants.FLASH_OFF;
 import static com.wonderkiln.camerakit.CameraKit.Constants.FLASH_ON;
+import static me.veganbuddy.veganbuddy.util.BitmapUtils.getStringStatsImageUri;
+import static me.veganbuddy.veganbuddy.util.BitmapUtils.setStringStatsImageUri;
 import static me.veganbuddy.veganbuddy.util.Constants.CA_TAG;
+import static me.veganbuddy.veganbuddy.util.Constants.FIRST_PIC_NAME;
 import static me.veganbuddy.veganbuddy.util.Constants.FLASH_OFF_MSG;
 import static me.veganbuddy.veganbuddy.util.Constants.FLASH_ON_MSG;
 import static me.veganbuddy.veganbuddy.util.Constants.FLASH_SETTING;
-import static me.veganbuddy.veganbuddy.util.Constants.PICTURES_DIRECTORY_PERMISSION;
+import static me.veganbuddy.veganbuddy.util.Constants.MP_CLASS_TAG;
+import static me.veganbuddy.veganbuddy.util.Constants.PERMISSIONS;
 import static me.veganbuddy.veganbuddy.util.Constants.SHOW_CAMERA;
-import static me.veganbuddy.veganbuddy.util.Constants.SHOW_PROGRESS;
 import static me.veganbuddy.veganbuddy.util.Constants.SHUTTER_SOUND_OFF_MSG;
 import static me.veganbuddy.veganbuddy.util.Constants.SHUTTER_SOUND_ON_MSG;
 import static me.veganbuddy.veganbuddy.util.Constants.SHUTTER_SOUND_SETTING;
+import static me.veganbuddy.veganbuddy.util.Constants.STOP_CLICK;
+import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.getAppMessage;
+import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.getNextPicName;
+import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.getStatsPicReference;
+import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.retrieveMessageForTheDay;
+import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.setNextPicName;
+import static me.veganbuddy.veganbuddy.util.GlobalVariables.myDashboard;
 
 public class CameraActivity extends AppCompatActivity {
 
     CameraView cameraView;
-    ProgressBar progressBar;
     ImageButton imageButtonClick;
     ImageButton imageButtonflash;
     ImageButton imageButtonShutterSound;
 
     SharedPreferences sharedPreferences;
-    boolean permissionGranted = false;
+
+    boolean storagePermissionGranted = false;
+    boolean locationPermissionGranted = false;
+
     boolean flash;
     boolean shutterSound;
-
-
 
 
     @Override
@@ -60,22 +76,53 @@ public class CameraActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_camera);
         cameraView = findViewById(R.id.act_camera_cameraview);
-        progressBar = findViewById(R.id.act_camera_progress_bar);
         imageButtonClick = findViewById(R.id.act_camera_imageoverlay);
         imageButtonflash = findViewById(R.id.act_camera_flash);
         imageButtonShutterSound = findViewById(R.id.act_camera_sound);
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         loadSharedPreferences();
 
+        //check App Message to be displayed in the Meal Preview Screen
+        // If it is null, then set it to First_PIC
+        if (getAppMessage() == null) {
+            retrieveMessageForTheDay(FIRST_PIC_NAME);
+            setNextPicName(FIRST_PIC_NAME);
+            myDashboard.setLastPicName(FIRST_PIC_NAME);
+            Log.v(MP_CLASS_TAG, "Vegan Message file for the day is: " + getNextPicName() +
+                    " \n And Vegan Message for the day is: " + getAppMessage());
+        }
 
-            cameraView.setCameraListener( new CameraListener() {
-                @Override
-                public void onPictureTaken(byte[] picture) {
-                        super.onPictureTaken(picture);
-                         if (createFileAndSaveImage(picture)) startMealPhotoActivity();
-                         finish();
-                }
-            });
+        //load appMessagePic
+        retrieveStatsImageUri();
+    }
+
+    private void retrieveStatsImageUri() {
+        StorageReference statsPicReference = getStatsPicReference(getNextPicName());
+        final Task<Uri> uriTask = statsPicReference.getDownloadUrl();
+        uriTask.addOnCompleteListener(new OnCompleteListener<Uri>() {
+            @Override
+            public void onComplete(@NonNull Task<Uri> task) {
+                setStringStatsImageUri(task.getResult().toString());
+                Picasso.with(getBaseContext()).load(getStringStatsImageUri()).fetch();
+            }
+        });
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_small_activities, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.fpm_close:
+                finish();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
     }
 
     private void loadSharedPreferences() {
@@ -108,12 +155,14 @@ public class CameraActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
         checkPermissions();
+        if (locationPermissionGranted) startPlacesIntentService();
+        else checkPermissions();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        if (permissionGranted) {
+        if (storagePermissionGranted) {
             //Start the Camera
             cameraView.start();
 
@@ -121,8 +170,6 @@ public class CameraActivity extends AppCompatActivity {
             updateUI(SHOW_CAMERA);
         } else {
             checkPermissions();
-            Toast.makeText(this, "Cannot start camera, as no permission to save pictures",
-                    Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -133,14 +180,23 @@ public class CameraActivity extends AppCompatActivity {
         super.onPause();
     }
 
-
     public void cameraClick(View view) {
         //Play the Shutter Click Sound, if NOT mute
         if (shutterSound) new MediaActionSound().play(MediaActionSound.SHUTTER_CLICK);
         //Capture the photo in the cameraView
-        cameraView.captureImage();
-        //update UI to stop camera and show the ProgressBar
-        updateUI(SHOW_PROGRESS);
+        cameraView.captureImage(new CameraKitEventCallback<CameraKitImage>() {
+            @Override
+            public void callback(CameraKitImage cameraKitImage) {
+                if (createFileAndSaveImage(cameraKitImage.getJpeg())) {
+                    //start the next activity
+                    startMealPreviewPhotoActivity();
+                    BitmapUtils.createThumbnail();
+                }
+            }
+        });
+        //update UI to prevent multiple image clicks
+        updateUI(STOP_CLICK);
+
     }
 
     private void saveSharedPreferences() {
@@ -153,23 +209,19 @@ public class CameraActivity extends AppCompatActivity {
 
     private void updateUI(int setView) {
         switch (setView){
-            case SHOW_PROGRESS:
-                cameraView.setVisibility(View.GONE);
-                progressBar.setVisibility(View.VISIBLE);
+            case STOP_CLICK:
                 imageButtonClick.setBackgroundColor(getColor(R.color.colorFABpressed));
                 imageButtonClick.setClickable(false);
                 break;
             case SHOW_CAMERA:
-                cameraView.setVisibility(View.VISIBLE);
-                progressBar.setVisibility(View.GONE);
                 imageButtonClick.setBackgroundColor(getColor(R.color.colorBackground));
                 imageButtonClick.setClickable(true);
                 break;
         }
     }
 
-    private void startMealPhotoActivity() {
-        Intent intentMealPhoto = new Intent(this, MealPhoto.class);
+    private void startMealPreviewPhotoActivity() {
+        Intent intentMealPhoto = new Intent(this, MealPreviewPhoto.class);
         startActivity(intentMealPhoto);
     }
 
@@ -203,32 +255,48 @@ public class CameraActivity extends AppCompatActivity {
     }
 
     private void checkPermissions() {
-        //If VeganBuddy Picture Folder does not exist then check if the user has
-        //granted Permission to create the directory
-        int permissionCheck = ContextCompat.checkSelfPermission(this,
-                android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        //Check if the user has granted Permission to create the directory
+        int permissionCheckStorage = ContextCompat.checkSelfPermission(this,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        //Check for Location Permission
+        int permissionCheckLocation = ContextCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION);
 
-        //Request the user for Permission to create the directory (if applicable)
-        if(permissionCheck != PackageManager.PERMISSION_GRANTED) {
+        if (permissionCheckStorage == PackageManager.PERMISSION_GRANTED) {
+            storagePermissionGranted = true;
+        }
+
+        if (permissionCheckLocation == PackageManager.PERMISSION_GRANTED) {
+            locationPermissionGranted = true;
+        }
+
+        if (!storagePermissionGranted || !locationPermissionGranted) {
             ActivityCompat.requestPermissions(this, new String[]
-                        {android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                                Manifest.permission.ACCESS_FINE_LOCATION},
-                    PICTURES_DIRECTORY_PERMISSION);
-        } else permissionGranted = true;
+                    {Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                            Manifest.permission.ACCESS_FINE_LOCATION}, PERMISSIONS);
+        }
+
     }
 
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        //if permission granted
-        if (grantResults.length> 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            permissionGranted = true;
+
+        //if permission granted store the permission in relevant variables
+        if (requestCode == PERMISSIONS) {
+            if (grantResults.length > 0) {
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED)
+                    storagePermissionGranted = true;
+                if (grantResults[1] == PackageManager.PERMISSION_GRANTED)
+                    locationPermissionGranted = true;
+            }
         }
-        //Else if permission is not not granted
-        else{
-            Toast.makeText(this, "App cannot take a picture if you don't allow " +
-                            "space to save it on your phone and Location permissions",
+
+        // if any of the permission is  not granted
+        if (!storagePermissionGranted || !locationPermissionGranted) {
+            Toast.makeText(this, "App cannot take a picture without required permissions",
                     Toast.LENGTH_LONG).show();
             //exit the activity after a message
             finish();
@@ -260,5 +328,10 @@ public class CameraActivity extends AppCompatActivity {
             imageButtonShutterSound.setImageDrawable(getDrawable(R.drawable.ic_volume_off_black_24dp));
             shutterSound = false;
         }
+    }
+
+    protected void startPlacesIntentService() {
+        Intent intent = new Intent(this, FetchPlacesIntentService.class);
+        startService(intent);
     }
 }

@@ -5,7 +5,6 @@ import android.net.Uri;
 import android.support.v7.widget.CardView;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -18,13 +17,12 @@ import com.google.firebase.crash.FirebaseCrash;
 import com.jackandphantom.circularimageview.CircleImage;
 import com.squareup.picasso.Picasso;
 
+import java.util.List;
+
 import me.veganbuddy.veganbuddy.R;
 import me.veganbuddy.veganbuddy.actors.Post;
 import me.veganbuddy.veganbuddy.ui.PlacardsFragment.OnListFragmentInteractionListener;
 import me.veganbuddy.veganbuddy.util.DateAndTimeUtils;
-
-import java.util.List;
-
 
 import static me.veganbuddy.veganbuddy.util.Constants.HEART_EMPTY;
 import static me.veganbuddy.veganbuddy.util.Constants.HEART_FULL;
@@ -40,10 +38,9 @@ import static me.veganbuddy.veganbuddy.util.Constants.ONE_LIKE;
  */
 public class PlacardsRecyclerViewAdapter extends RecyclerView.Adapter<PlacardsRecyclerViewAdapter.PlacardHolder> {
 
+    private final OnListFragmentInteractionListener mListener;
     private List<Post> listofPosts;
     private List<String> listOfPostIDs;
-
-    private final OnListFragmentInteractionListener mListener;
     private Context thisContext;
 
     PlacardsRecyclerViewAdapter(List<Post> postList, List<String> postIDs, OnListFragmentInteractionListener listener) {
@@ -87,8 +84,9 @@ public class PlacardsRecyclerViewAdapter extends RecyclerView.Adapter<PlacardsRe
 
 
         //Retrieve the URI of the Profile picture and then insert it into the imageView using Picasso
-        Uri profilePicUri = Uri.parse(currentPost.getUserPhotoUri());
-        Picasso.with(thisContext).load(profilePicUri).into(placard.profilePic);
+        Picasso.with(thisContext).load(currentPost.getUserPhotoUri())
+                .placeholder(R.drawable.progressbar_green).error(R.drawable.vegan_buddy_menu_icon)
+                .into(placard.profilePic);
 
         String timediff = DateAndTimeUtils.timeDifference(currentPost.getDatestamp());
         placard.timeDifference.setText(timediff);
@@ -171,6 +169,15 @@ public class PlacardsRecyclerViewAdapter extends RecyclerView.Adapter<PlacardsRe
         // to add comments about this placard
         placard.commentsCount.setOnClickListener(placardOnClickListener);
         placard.myComments.setOnClickListener(placardOnClickListener);
+
+        //Set an OnClickListener on the 'profile' picture and the profile username
+        placard.profilePic.setOnClickListener(placardOnClickListener);
+        placard.userName.setOnClickListener(placardOnClickListener);
+
+        //Set a default OnClickListener on the entire 'placard' cardview and
+        // the timeDifference textview
+        placard.thisPlacard.setOnClickListener(placardOnClickListener);
+        placard.timeDifference.setOnClickListener(placardOnClickListener);
     }
 
 

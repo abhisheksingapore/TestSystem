@@ -38,11 +38,9 @@ import static me.veganbuddy.veganbuddy.util.GlobalVariables.thisAppUser;
 public class VnotificationFragment extends Fragment {
 
     private static final String ARG_LIST_SOURCE = "source";
-    private String LIST_SOURCE = "";
-
     private static FirebaseDatabase mDatabase;
     private static DatabaseReference myRef; //Reference for nodes in the database
-
+    private String LIST_SOURCE = "";
     private List<Vnotification> vnotificationList  = new ArrayList<>();
     private VnotificationRecyclerViewAdapter vnotificationRVA;
 
@@ -71,8 +69,13 @@ public class VnotificationFragment extends Fragment {
         if (getArguments() != null) {
             LIST_SOURCE = getArguments().getString(ARG_LIST_SOURCE);
         }
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
         try {
-            retrieveVvotificationsList();
+            retrieveVnotificationsList();
         } catch (NullPointerException NPE) {
             FirebaseCrash.log("NullpointerException in Vnotification array initialization");
             Log.e(VNF_TAG, "Nullpointerexception in Vnotification array initialization " + NPE.toString());
@@ -114,21 +117,6 @@ public class VnotificationFragment extends Fragment {
         mListener = null;
     }
 
-    /**
-     * This interface must be implemented by activities that contain this
-     * fragment to allow an interaction in this fragment to be communicated
-     * to the activity and potentially other fragments contained in that
-     * activity.
-     * <p/>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
-     */
-    public interface OnListFragmentInteractionListener {
-        // TODO: Update argument type and name
-        void onListFragmentInteraction(Vnotification item);
-    }
-
     /***********************************************************************
      ***********************************************************************
      Adding Firebase database Listeners to retrieve the data and update the UI on data change
@@ -136,14 +124,14 @@ public class VnotificationFragment extends Fragment {
      ************************************************************************/
     private void setNotificationsDatabaseReference() {
         mDatabase = FirebaseDatabase.getInstance();
-        myRef = mDatabase.getReference(V_NOTIFICATIONS_NODE);
+        myRef = mDatabase.getReference();
     }
 
-    private void retrieveVvotificationsList() {
+    private void retrieveVnotificationsList() {
         setNotificationsDatabaseReference();
         String username = thisAppUser.getFireBaseID();
 
-        myRef.child(username)
+        myRef.child(username).child(V_NOTIFICATIONS_NODE)
                 .child(LIST_SOURCE).limitToLast(VN_NODES_TO_RETRIEVE).orderByChild(DATE_TIME_NODE)
                 .addValueEventListener(new ValueEventListener() {
                     @Override
@@ -174,6 +162,21 @@ public class VnotificationFragment extends Fragment {
         //Finally, add the List Header item - either INBOUND or OUTBOUND
         thisList.add(new Vnotification(LIST_SOURCE));
         return thisList;
+    }
+
+    /**
+     * This interface must be implemented by activities that contain this
+     * fragment to allow an interaction in this fragment to be communicated
+     * to the activity and potentially other fragments contained in that
+     * activity.
+     * <p/>
+     * See the Android Training lesson <a href=
+     * "http://developer.android.com/training/basics/fragments/communicating.html"
+     * >Communicating with Other Fragments</a> for more information.
+     */
+    public interface OnListFragmentInteractionListener {
+        // TODO: Update argument type and name
+        void onListFragmentInteraction(Vnotification item);
     }
 
 }

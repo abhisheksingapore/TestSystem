@@ -11,17 +11,20 @@ import android.util.Log;
 
 import com.google.firebase.crash.FirebaseCrash;
 
+import org.apache.commons.io.IOUtils;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
-
 import static me.veganbuddy.veganbuddy.util.Constants.BU_TAG;
-import static me.veganbuddy.veganbuddy.util.Constants.MP_TAG;
+import static me.veganbuddy.veganbuddy.util.Constants.HIGH_QUALITY;
+import static me.veganbuddy.veganbuddy.util.Constants.MED_QUALITY;
+import static me.veganbuddy.veganbuddy.util.Constants.PROFILE_PIC_HEIGHT;
+import static me.veganbuddy.veganbuddy.util.Constants.PROFILE_PIC_WIDTH;
 import static me.veganbuddy.veganbuddy.util.Constants.VEGAN_BUDDY_FOLDER;
+import static me.veganbuddy.veganbuddy.util.GlobalVariables.thisAppUser;
 
 /**
  * Created by abhishek on 31/8/17.
@@ -38,6 +41,9 @@ public class BitmapUtils {
     private static String photoPath;
     private static String mealPhotoName;
 
+    //Variable for StatsImage
+    private static String stringStatsImageUri;
+
     //Variables for MealPhoto thumbnail
     private static String photoThumbnailURL;
     private static Uri photoThumbnailUri;
@@ -45,6 +51,12 @@ public class BitmapUtils {
     //Variables for MealPhoto Screenshot
     private static String screenShotURL;
     private static File screenShotFile;
+
+    //Variables for ProfilePicture
+    private static Uri profilePictureUri;
+    private static String profilePictureName;
+    private static String profilePicturePath;
+
 
     public static String getPhotoURL() {
         return photoURL;
@@ -78,12 +90,12 @@ public class BitmapUtils {
         BitmapUtils.screenShotURL = screenShotURL;
     }
 
-    public static void setPhotoPath(String photoPath) {
-        BitmapUtils.photoPath = photoPath;
-    }
-
     public static String getPhotoPath() {
         return photoPath;
+    }
+
+    public static void setPhotoPath(String photoPath) {
+        BitmapUtils.photoPath = photoPath;
     }
 
     public static Uri getPhotoUri() {
@@ -94,13 +106,12 @@ public class BitmapUtils {
         photoUri = mUri;
     }
 
+    public static String getMealPhotoName() {
+        return mealPhotoName;
+    }
 
     public static void setMealPhotoName(String mealPhotoName) {
         BitmapUtils.mealPhotoName = mealPhotoName;
-    }
-
-    public static String getMealPhotoName() {
-        return mealPhotoName;
     }
 
     public static File getVeganBuddyFolder() {
@@ -118,7 +129,6 @@ public class BitmapUtils {
 
 
     public static Uri createMealPhotoFile(byte[] jpeg) {
-
         try {
             //First create file in the local drive of the phone
             File photoFile = null;
@@ -173,6 +183,10 @@ public class BitmapUtils {
                 //get PhotoURI and save in local app variable
                 Uri thisPhotoUri = Uri.fromFile(photoFile);
                 BitmapUtils.setPhotoUri(thisPhotoUri);
+
+                //create Thumbnail of this image
+                createThumbnail();
+
                 return BitmapUtils.getPhotoUri();
             } catch (IOException | NullPointerException | IllegalArgumentException exception) {
                 FirebaseCrash.log(BU_TAG + exception.getMessage());
@@ -231,7 +245,7 @@ public class BitmapUtils {
             photoWidth = exifInterface.getAttributeInt(ExifInterface.TAG_IMAGE_WIDTH, -939);
         } catch (IOException IOE) {
             IOE.printStackTrace();
-            Log.i(MP_TAG, "IO error in getting Exif data from camera photo");
+            Log.i(BU_TAG, "IO error in getting Exif data from camera photo");
         }
 
         if ( photoLength > photoWidth ) {
@@ -249,7 +263,7 @@ public class BitmapUtils {
             tempFile = File.createTempFile(tempFileName, ".jpg", veganBuddyFolder);
             FileOutputStream fileOutputStream =
                     new FileOutputStream(tempFile);
-            bitmapSS.compress(Bitmap.CompressFormat.JPEG, 100, fileOutputStream);
+            bitmapSS.compress(Bitmap.CompressFormat.JPEG, HIGH_QUALITY, fileOutputStream);
             fileOutputStream.close();
             } catch (IOException | NullPointerException exception) {
                 Log.e(BU_TAG, "Exception while saving Screenshot image to temp file");
@@ -270,7 +284,7 @@ public class BitmapUtils {
             tempThumbFile = File.createTempFile(tempThumbFileName, ".jpg", veganBuddyFolder);
             FileOutputStream fileOutputStream =
                         new FileOutputStream(tempThumbFile);
-            tempThumbBitmap.compress(Bitmap.CompressFormat.JPEG, 90, fileOutputStream);
+            tempThumbBitmap.compress(Bitmap.CompressFormat.JPEG, MED_QUALITY, fileOutputStream);
             fileOutputStream.close();
         } catch (IOException | NullPointerException exception) {
             Log.e("BitmapUtils Error", "IO Exception happened while saving Screenshot image to temp file");
@@ -289,7 +303,7 @@ public class BitmapUtils {
             tempThumbFile = File.createTempFile(tempThumbFileName, ".jpg", veganBuddyFolder);
                 FileOutputStream fileOutputStream =
                         new FileOutputStream(tempThumbFile);
-                bitmapUpload.compress(Bitmap.CompressFormat.JPEG, 90, fileOutputStream);
+            bitmapUpload.compress(Bitmap.CompressFormat.JPEG, MED_QUALITY, fileOutputStream);
                 fileOutputStream.close();
             } catch (IOException | NullPointerException exception) {
             Log.e("BitmapUtils Error", "IO Exception happened while saving Screenshot image to temp file");
@@ -298,14 +312,6 @@ public class BitmapUtils {
         return tempThumbFile;
     }
 
-    public static void deleteFiles() {
-        try {
-            if (veganBuddyFolderExists()) FileUtils.cleanDirectory(veganBuddyFolder);
-        } catch (IOException IOE){
-            FirebaseCrash.log(BU_TAG + "error caught\n\n" + IOE.getMessage());
-            IOE.printStackTrace();
-        }
-    }
 
     public static boolean veganBuddyFolderExists() {
         veganBuddyFolder = new File(Environment
@@ -319,5 +325,79 @@ public class BitmapUtils {
         //if not, then  create the VeganBuddy Picture Folder and return the status of mkdirs()
         return veganBuddyFolder.mkdirs();
 
+    }
+
+    public static String getStringStatsImageUri() {
+        return stringStatsImageUri;
+    }
+
+    public static void setStringStatsImageUri(String imageUri) {
+        stringStatsImageUri = imageUri;
+    }
+
+    public static Uri createProfilePictureFile(byte[] jpeg) {
+        try {
+            //decode bitmap from byte array
+            Bitmap bitmapProfilePicFull = BitmapFactory.decodeByteArray(jpeg, 0, jpeg.length);
+
+            //convert bitmap to required size
+            Bitmap bitmapProfilePic = Bitmap.createScaledBitmap(bitmapProfilePicFull,
+                    PROFILE_PIC_WIDTH, PROFILE_PIC_HEIGHT, false);
+
+
+            if (veganBuddyFolderExists()) {
+                //create a relevant filename and set the profile picture name
+                String filename = thisAppUser.getUserName().replaceAll("\\s", "");
+                File profilePic = File.createTempFile(filename, ".jpg", veganBuddyFolder);
+                setProfilePictureName(profilePic.getName());
+
+                //find the relevant filename path and store it
+                String profilePicPath = profilePic.getAbsolutePath();
+                setProfilePicturePath(profilePicPath);
+
+                //create a new file output stream to save the bitmap
+                FileOutputStream fileOutputStream = new FileOutputStream(profilePicPath);
+
+                //compress bitmap to jpeg
+                bitmapProfilePic.compress(Bitmap.CompressFormat.JPEG, MED_QUALITY, fileOutputStream);
+
+                fileOutputStream.close();
+
+                //retrieve the Uri of the recently saved bitmap for profilePic and save
+                Uri profilePicUri = Uri.fromFile(profilePic);
+                setProfilePictureUri(profilePicUri);
+            }
+
+        } catch (IOException ioe) {
+            FirebaseCrash.log(BU_TAG + ioe.getMessage());
+            Log.e(BU_TAG, ioe.getMessage());
+        }
+
+        //return the saved Uri
+        return profilePictureUri;
+    }
+
+    public static String getProfilePictureName() {
+        return profilePictureName;
+    }
+
+    public static void setProfilePictureName(String profilePictureName) {
+        BitmapUtils.profilePictureName = profilePictureName;
+    }
+
+    public static Uri getProfilePictureUri() {
+        return profilePictureUri;
+    }
+
+    public static void setProfilePictureUri(Uri profilePictureUri) {
+        BitmapUtils.profilePictureUri = profilePictureUri;
+    }
+
+    public static String getProfilePicturePath() {
+        return profilePicturePath;
+    }
+
+    public static void setProfilePicturePath(String profilePicturePath) {
+        BitmapUtils.profilePicturePath = profilePicturePath;
     }
 }

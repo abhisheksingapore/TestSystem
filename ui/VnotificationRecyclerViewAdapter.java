@@ -13,14 +13,16 @@ import android.widget.TextView;
 import com.jackandphantom.circularimageview.CircleImage;
 import com.squareup.picasso.Picasso;
 
+import java.util.List;
+import java.util.Locale;
+
 import me.veganbuddy.veganbuddy.R;
 import me.veganbuddy.veganbuddy.actors.Vnotification;
 import me.veganbuddy.veganbuddy.ui.VnotificationFragment.OnListFragmentInteractionListener;
 
-import java.util.List;
-
 import static me.veganbuddy.veganbuddy.util.Constants.VN_COMMENT_PHOTO;
 import static me.veganbuddy.veganbuddy.util.Constants.VN_DIRECT_MESSAGE;
+import static me.veganbuddy.veganbuddy.util.Constants.VN_FOLLOW;
 import static me.veganbuddy.veganbuddy.util.Constants.VN_LIKED_PHOTO;
 import static me.veganbuddy.veganbuddy.util.Constants.VN_PHOTO_SHARE;
 import static me.veganbuddy.veganbuddy.util.Constants.VN_UPLOADED_NEW_MEAL_PHOTO;
@@ -77,11 +79,13 @@ public class VnotificationRecyclerViewAdapter extends RecyclerView.Adapter<Vnoti
         vNotificationMessage = constructVnotificationMessage(vnotificationCurrent);
 
         //add user profile picture
-        Uri userPic = Uri.parse(vnotificationCurrent.getCreatedByPic());
-        Picasso.with(thisContext).load(userPic).into(vNholder.userPic);
+        if (vnotificationCurrent.getCreatedByPic() != null) {
+            Uri userPic = Uri.parse(vnotificationCurrent.getCreatedByPic());
+            Picasso.with(thisContext).load(userPic).into(vNholder.userPic);
+        }
 
         //Show the amount of vCoins earned with this action
-        vNholder.vCoins.setText(vnotificationCurrent.getNumberOfVcoins());
+        vNholder.vCoins.setText(String.format(Locale.ENGLISH, "%,1d", vnotificationCurrent.getNumberOfVcoins()));
 
         //choose the icon for the vNotification type based on the text
         switch (vnotificationCurrent.getType()) {
@@ -89,13 +93,19 @@ public class VnotificationRecyclerViewAdapter extends RecyclerView.Adapter<Vnoti
                 vNtypeIcon = thisContext.getDrawable(R.drawable.ic_add_circle_green_24dp);
                 break;
             case VN_LIKED_PHOTO:
+                vNtypeIcon = thisContext.getDrawable(R.drawable.ic_comment_like);
                 break;
             case VN_COMMENT_PHOTO:
+                vNtypeIcon = thisContext.getDrawable(R.drawable.ic_comment_black_24dp);
                 break;
             case VN_DIRECT_MESSAGE:
+                vNtypeIcon = thisContext.getDrawable(R.drawable.ic_messages_black_24dp);
                 break;
             case VN_PHOTO_SHARE:
+                vNtypeIcon = thisContext.getDrawable(R.drawable.ic_menu_share);
                 break;
+            case VN_FOLLOW:
+                vNtypeIcon = thisContext.getDrawable(R.drawable.ic_following_black_24dp);
         }
         vNholder.notificationType.setImageDrawable(vNtypeIcon);
 
@@ -131,16 +141,19 @@ public class VnotificationRecyclerViewAdapter extends RecyclerView.Adapter<Vnoti
                 vNmessage = vNmessage + "uploaded a new meal photo";
                 break;
             case VN_LIKED_PHOTO:
-                vNmessage = vNmessage + "liked your meal photo";
+                vNmessage = vNmessage + "liked a meal photo";
                 break;
             case VN_COMMENT_PHOTO:
-                vNmessage = vNmessage + "commented on your meal photo";
+                vNmessage = vNmessage + "commented on a meal photo";
                 break;
             case VN_DIRECT_MESSAGE:
                 vNmessage = vNmessage + "messaged you";
                 break;
             case VN_PHOTO_SHARE:
-                vNmessage = vNmessage + "shared your meal photo";
+                vNmessage = vNmessage + "shared a meal photo";
+                break;
+            case VN_FOLLOW:
+                vNmessage = vNmessage + "followed a vegan buddy";
                 break;
         }
 

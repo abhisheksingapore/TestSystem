@@ -1,22 +1,23 @@
 package me.veganbuddy.veganbuddy.ui;
 
 import android.net.Uri;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Toast;
 
-
 import com.squareup.picasso.Picasso;
 
 import me.veganbuddy.veganbuddy.R;
-import static me.veganbuddy.veganbuddy.util.GlobalVariables.thisAppUser;
 
 import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.uploadPostCommentsToDatabase;
+import static me.veganbuddy.veganbuddy.util.GlobalVariables.thisAppUser;
 
 public class CommentsActivity extends AppCompatActivity {
     public static PlacardCommentsRecyclerViewAdapter placardCommentsRecyclerViewAdapter;
@@ -75,5 +76,22 @@ public class CommentsActivity extends AppCompatActivity {
         RelativeLayout ci_main_comment = (RelativeLayout) ci_icons.getParent();
         ImageView authorID = (ImageView) ci_main_comment.findViewById(R.id.ci_comment_author);
         */
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_small_activities, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.fpm_close:
+                finish();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
     }
 }

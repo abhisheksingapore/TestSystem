@@ -1,22 +1,20 @@
 package me.veganbuddy.veganbuddy.actors;
 
-import android.support.annotation.NonNull;
-
 /**
  * Created by abhishek on 20/10/17.
  */
 
 //Named as Vnotification to prevent any conflict with Android Notifications or Firebase Notifications
 public class Vnotification {
-    private String type;
-    private String createdAt;
-    private String viewedAt;
-    private String createdBy;
-    private String createdByName;
-    private String createdByPic;
-    private String createdForPhoto;
-    private String numberOfVcoins;
-
+    public String type;
+    public String createdAt;
+    public String viewedAt;
+    public String createdBy;
+    public String createdByName;
+    public String createdByPic;
+    public String createdForPhoto;
+    public String createdForPostID;
+    public Long numberOfVcoins;
 
     public Vnotification() {
         //default empty constructor
@@ -27,7 +25,7 @@ public class Vnotification {
     }
 
     public Vnotification(String type, String createdAt, String viewedAt, String createdBy, String createdByName,
-                         String createdByPic, String createdForPhoto, String numberOfVcoins) {
+                         String createdByPic, String createdForPhoto, Long numberOfVcoins, String postID) {
         this.type = type;
         this.createdAt = createdAt;
         this.viewedAt =viewedAt;
@@ -36,6 +34,7 @@ public class Vnotification {
         this.createdByPic = createdByPic;
         this.createdForPhoto = createdForPhoto;
         this.numberOfVcoins = numberOfVcoins;
+        this.createdForPostID = postID;
     }
 
     public String getType() {
@@ -58,7 +57,7 @@ public class Vnotification {
         return createdForPhoto;
     }
 
-    public String getNumberOfVcoins() {
+    public Long getNumberOfVcoins() {
         return numberOfVcoins;
     }
 
@@ -68,5 +67,9 @@ public class Vnotification {
 
     public String getCreatedByName() {
         return createdByName;
+    }
+
+    public String getCreatedForPostID() {
+        return createdForPostID;
     }
 }

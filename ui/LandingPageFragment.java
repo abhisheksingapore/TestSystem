@@ -1,30 +1,37 @@
 package me.veganbuddy.veganbuddy.ui;
 
 import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
-import android.widget.Spinner;
 import android.widget.TextView;
 
 import com.jackandphantom.circularprogressbar.CircleProgressbar;
-
 
 import me.veganbuddy.veganbuddy.R;
 import me.veganbuddy.veganbuddy.actors.Dashboard;
 import me.veganbuddy.veganbuddy.util.MeatMathUtils;
 
 import static me.veganbuddy.veganbuddy.util.Constants.ANIMALS_DASHBOARD_LAYOUT;
-import static me.veganbuddy.veganbuddy.util.Constants.VEGAN_DASHBOARD_LAYOUT;
+import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.createNewFoodWisdomForThisAppUser;
+import static me.veganbuddy.veganbuddy.util.FirebaseStorageUtils.getFoodWisdomThreshold;
 import static me.veganbuddy.veganbuddy.util.GlobalVariables.myDashboard;
+import static me.veganbuddy.veganbuddy.util.GlobalVariables.thisAppUser;
 import static me.veganbuddy.veganbuddy.util.MeatMathUtils.GREEN_COLOR;
 import static me.veganbuddy.veganbuddy.util.MeatMathUtils.RED_COLOR;
 import static me.veganbuddy.veganbuddy.util.MeatMathUtils.YELLOW_COLOR;
+import static me.veganbuddy.veganbuddy.util.MeatMathUtils.calculatePercentVeganForToday;
+import static me.veganbuddy.veganbuddy.util.MeatMathUtils.getNumberofVeganMealsLogged;
+import static me.veganbuddy.veganbuddy.util.MeatMathUtils.getTotalMealsLogged;
+import static me.veganbuddy.veganbuddy.util.MeatMathUtils.percentVeganFloat;
+import static me.veganbuddy.veganbuddy.util.MeatMathUtils.percentVeganString;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -75,8 +82,6 @@ public class LandingPageFragment extends Fragment {
         switch (mParam1) {
             case ANIMALS_DASHBOARD_LAYOUT: resourceID = R.layout.fragment_animals_saved;
             break;
-            case VEGAN_DASHBOARD_LAYOUT: resourceID = R.layout.fragment_dashboard_vegan_percentage;
-            break;
             default:resourceID = R.layout.fragment_landing_page;
             break;
         }
@@ -90,37 +95,21 @@ public class LandingPageFragment extends Fragment {
         switch (mParam1){
             case ANIMALS_DASHBOARD_LAYOUT: loadDashboardAnimals(view);
             break;
-            case VEGAN_DASHBOARD_LAYOUT: loadVeganDashBoardData (view);
-            break;
         }
     }
 
-    private void loadVeganDashBoardData(View view) {
-        TextView startDate = view.findViewById(R.id.fdvp_start_Date);
-        TextView veganMeals = view.findViewById(R.id.fdvp_vegan_meals);
-        TextView potentialMeals = view.findViewById(R.id.fdvp_potential_meals);
-        TextView percentVeganText = view.findViewById(R.id.fdvp_percent_complete);
-        CircleProgressbar circleProgressbar = view.findViewById(R.id.fdvp_graph_progressBar);
-        Spinner spinnerDuration = view.findViewById(R.id.fdvp_spinner1);
-        Spinner spinnerWho = view.findViewById(R.id.fdvp_spinner2);
-        String filter1 = spinnerDuration.getSelectedItem().toString();
-        String filter2 = spinnerWho.getSelectedItem().toString();
-
-        MeatMathUtils.setFiltersAndCalculate(getContext(),filter1, filter2);
-
-        startDate.setText(myDashboard.getStartDateOfVegan());
-        veganMeals.setText(MeatMathUtils.getNumberofVeganMealsLogged());
-        potentialMeals.setText(MeatMathUtils.getTotalMealsLogged());
-        percentVeganText.setText(MeatMathUtils.percentVeganString());
-        circleProgressbar.setProgress(MeatMathUtils.percentVeganFloat());
-    }
 
     private void loadDashboardAnimals(View view) {
 
-        ImageView cow = view.findViewById(R.id.icon_cow);
-        ImageView chicken = view.findViewById(R.id.icon_chicken);
-        ImageView pig = view.findViewById(R.id.icon_pig);
-        ImageView seafood = view.findViewById(R.id.icon_seafood);
+        ImageView imageViewAnimals = view.findViewById(R.id.fas_icon_animals);
+        TextView textViewPercent = view.findViewById(R.id.fas_text_animal);
+        TextView startDate = view.findViewById(R.id.fas_start_Date);
+        TextView veganMeals = view.findViewById(R.id.fas_vegan_meals);
+        TextView potentialMeals = view.findViewById(R.id.fas_potential_meals);
+
+        CircleProgressbar circleProgressbar = view.findViewById(R.id.fas_progressBar);
+
+
         Context thisContext = getContext();
 
         //in case the app arrives here without retrieving the dashboard data
@@ -129,25 +118,51 @@ public class LandingPageFragment extends Fragment {
         String animalsColor = MeatMathUtils.DASHBOARD_ANIMAL_COLOR;
         switch (animalsColor) {
             case RED_COLOR:
-                cow.setImageDrawable(ContextCompat.getDrawable(thisContext,R.drawable.cow_red));
-                chicken.setImageDrawable(ContextCompat.getDrawable(thisContext,R.drawable.chicken_red));
-                pig.setImageDrawable(ContextCompat.getDrawable(thisContext,R.drawable.pig_red));
-                seafood.setImageDrawable(ContextCompat.getDrawable(thisContext,R.drawable.fish_red));
+                imageViewAnimals.setImageDrawable(ContextCompat
+                        .getDrawable(thisContext, R.drawable.all_animals_red));
                 break;
             case YELLOW_COLOR:
-                cow.setImageDrawable(ContextCompat.getDrawable(thisContext,R.drawable.cow_yellow));
-                chicken.setImageDrawable(ContextCompat.getDrawable(thisContext,R.drawable.chicken_yellow));
-                pig.setImageDrawable(ContextCompat.getDrawable(thisContext,R.drawable.pig_yellow));
-                seafood.setImageDrawable(ContextCompat.getDrawable(thisContext,R.drawable.fish_yellow));
+                imageViewAnimals.setImageDrawable(ContextCompat
+                        .getDrawable(thisContext, R.drawable.all_animals_orange));
                 break;
             case GREEN_COLOR:
-                cow.setImageDrawable(ContextCompat.getDrawable(thisContext,R.drawable.cow_green));
-                chicken.setImageDrawable(ContextCompat.getDrawable(thisContext,R.drawable.chicken_green));
-                pig.setImageDrawable(ContextCompat.getDrawable(thisContext,R.drawable.pig_green));
-                seafood.setImageDrawable(ContextCompat.getDrawable(thisContext,R.drawable.fish_green));
+                imageViewAnimals.setImageDrawable(ContextCompat
+                        .getDrawable(thisContext, R.drawable.all_animals_green));
                 break;
         }
+
+        calculatePercentVeganForToday();
+        textViewPercent.setText(percentVeganString());
+        if (thisAppUser != null) startDate.setText(thisAppUser.getStartDateOfVegan());
+        veganMeals.setText(getNumberofVeganMealsLogged());
+        potentialMeals.setText(getTotalMealsLogged());
+        circleProgressbar.setProgress(percentVeganFloat());
+        unlockFoodWisdom();
     }
+
+    private void unlockFoodWisdom() {
+        if (thisAppUser == null) return;
+
+        if (thisAppUser.getFoodWisdomCounter() == getFoodWisdomThreshold()
+                && getFoodWisdomThreshold() != -939) {
+
+            //Create the new Food Wisdom for thisAppUser
+            createNewFoodWisdomForThisAppUser();
+
+            Snackbar snackbar = Snackbar
+                    .make(getView(), R.string.food_wisdom_unlocked_message, Snackbar.LENGTH_LONG);
+
+            snackbar.setAction(R.string.lpf_dialog_ok, new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    Intent intentFoodWisdom = new Intent(getContext(), FoodWisdomActivity.class);
+                    startActivity(intentFoodWisdom);
+                }
+            });
+            snackbar.show();
+        }
+    }
+
 
     @Override
     public void onAttach(Context context) {

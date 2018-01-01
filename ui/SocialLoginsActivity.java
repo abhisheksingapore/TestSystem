@@ -107,7 +107,8 @@ public class SocialLoginsActivity extends AppCompatActivity {
         fbLogin.registerCallback(fbCallbackManager, new FacebookCallback<LoginResult>() {
             @Override
             public void onSuccess(LoginResult loginResult) {
-                Toast.makeText(SocialLoginsActivity.this, "Facebook Login successful", Toast.LENGTH_SHORT).show();
+                Toast.makeText(SocialLoginsActivity.this,
+                        "Facebook Login successful", Toast.LENGTH_SHORT).show();
                 imageButton.setVisibility(View.VISIBLE);
                 finish();
                 Log.v(SLA_TAG, "Facebook Login successful");

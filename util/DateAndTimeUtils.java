@@ -1,13 +1,15 @@
 package me.veganbuddy.veganbuddy.util;
 
-import java.text.DateFormat;
+import android.util.Log;
+
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 
-import me.veganbuddy.veganbuddy.R;
+import static me.veganbuddy.veganbuddy.util.Constants.DISPLAY_DATE_FORMAT;
+import static me.veganbuddy.veganbuddy.util.Constants.DISPLAY_TIME_FORMAT;
 
 /**
  * Created by abhishek on 26/8/17.
@@ -15,7 +17,9 @@ import me.veganbuddy.veganbuddy.R;
 
 public class DateAndTimeUtils {
 
-    public static String MEAL_TYPE = "Snacks";
+    static String MEAL_TYPE = "Snacks";
+    static String POST_NODE_FORMAT = "yyyyMMdd";
+    static String MILLISECOND_FORMAT = "yyyyMMdd_HHmmssSSS";
     private static Calendar rightNow = Calendar.getInstance();
 
     //Variable to measure the meal type based on time of the day
@@ -33,21 +37,21 @@ public class DateAndTimeUtils {
         }
 
     public static String getMealTypeBasedOnTimeOfTheDay() {
-        int timeNow = timeOfTheDay();
+        int hourNow = hourOftheDay();
 
-        if (isBetween(timeNow,breakfast_start, breakfast_end)) {
+        if (isBetween(hourNow, breakfast_start, breakfast_end)) {
             MEAL_TYPE = "BreakFast";
         }
 
-        if (isBetween(timeNow, lunch_start, lunch_end)) {
+        if (isBetween(hourNow, lunch_start, lunch_end)) {
             MEAL_TYPE = "Lunch";
         }
 
-        if (isBetween(timeNow, dinner_start, dinner_end)) {
+        if (isBetween(hourNow, dinner_start, dinner_end)) {
             MEAL_TYPE = "Dinner";
         }
 
-        if (isBetween(timeNow, supper_start, supper_end)) {
+        if (isBetween(hourNow, supper_start, supper_end)) {
             MEAL_TYPE = "Supper";
         }
 
@@ -58,7 +62,7 @@ public class DateAndTimeUtils {
         return lower <= x && x <= upper;
     }
 
-    private static int  timeOfTheDay(){
+    private static int hourOftheDay() {
         return rightNow.get(Calendar.HOUR_OF_DAY);
     }
 
@@ -66,12 +70,24 @@ public class DateAndTimeUtils {
         return new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.ENGLISH).format(new Date());
     }
 
+    public static String dateTimeStampMilliSeconds() {
+        return new SimpleDateFormat(MILLISECOND_FORMAT, Locale.ENGLISH).format(new Date());
+    }
+
     public static String dateStamp(){
-        return new SimpleDateFormat("yyyyMMdd", Locale.ENGLISH).format(new Date());
+        return new SimpleDateFormat(POST_NODE_FORMAT, Locale.ENGLISH).format(new Date());
+    }
+
+    public static String dateStampChat() {
+        return new SimpleDateFormat(DISPLAY_DATE_FORMAT, Locale.ENGLISH).format(new Date());
+    }
+
+    public static String timeStampChat() {
+        return new SimpleDateFormat(DISPLAY_TIME_FORMAT, Locale.ENGLISH).format(new Date());
     }
 
     public static String dateStampHumanReadable(){
-        return new SimpleDateFormat("yyyy-MMM-dd", Locale.ENGLISH).format(new Date());
+        return new SimpleDateFormat(DISPLAY_DATE_FORMAT, Locale.ENGLISH).format(new Date());
     }
 
     public static int thisWeek(){
@@ -96,7 +112,6 @@ public class DateAndTimeUtils {
 
             long diff = d2.getTime() - d1.getTime();
 
-            long diffSeconds = diff / 1000 % 60;
             long diffMinutes = diff / (60 * 1000) % 60;
             long diffHours = diff / (60 * 60 * 1000) % 24;
             long diffDays = diff / (24 * 60 * 60 * 1000);
@@ -104,11 +119,14 @@ public class DateAndTimeUtils {
             if (diffDays > 30) {
                 timeAndDaysDifference = "More than 1 month ago";
             } else if (diffDays > 0) {
-                if (diffDays > 1) {
+                if (diffDays == 1) {
+                    timeAndDaysDifference = "Yesterday";
+                } else if (diffDays > 2) {
                     int diffDaysInt = (int) diffDays;
                     timeAndDaysDifference = Integer.toString(diffDaysInt) + " days ago";
-                } else timeAndDaysDifference = "1 day ago";
-                //Todo: fix the messaging if timeanddaysdiference is > 1 day. e.g. 1 day and 15 hours
+                } else if (diffDays > 1) {
+                    timeAndDaysDifference = "More than 1 day ago";
+                }
             } else if (diffHours > 0) {
                 if (diffHours > 1) {
                     int diffHoursInt = (int) diffHours;
@@ -117,8 +135,13 @@ public class DateAndTimeUtils {
             } else if (diffMinutes > 1) {
                 int diffMinutesInt = (int) diffMinutes;
                 timeAndDaysDifference = Integer.toString(diffMinutesInt) + " mins ago";
-            } else {
+            } else if (diffMinutes < 1) {
                 timeAndDaysDifference = "Moments ago";
+            }
+
+            if (diffDays < 0 || diffHours < 0 || diffMinutes < 0) {
+                //in case the time difference is negative for some exceptional reason
+                timeAndDaysDifference = "Some time ago";
             }
         } catch (ParseException PE){
             PE.printStackTrace();
@@ -126,8 +149,8 @@ public class DateAndTimeUtils {
         return timeAndDaysDifference;
     }
 
-    public static int daysSinceVegan(String veganDate) {
-        SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd", Locale.ENGLISH);
+    public static int daysSinceVeganStart(String veganDate) {
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MMM-dd", Locale.ENGLISH);
         int diffDays=0;
         try {
             String todaysDate = dateStampHumanReadable();
@@ -164,6 +187,22 @@ public class DateAndTimeUtils {
         int thisYear = DateAndTimeUtils.thisYear();
         String thisYearString = Integer.toString(thisYear);
         return thisYearString;
+    }
+
+    public static double DateStringToDouble(String stringDate) {
+        return Double.parseDouble(stringDate);
+    }
+
+    public static String easyToReadDate(String inputDate) {
+        try {
+            SimpleDateFormat dateFormat = new SimpleDateFormat(POST_NODE_FORMAT, Locale.ENGLISH);
+            Date dateThis = dateFormat.parse(inputDate);
+            return new SimpleDateFormat("dd-MMM", Locale.ENGLISH)
+                    .format(dateThis);
+        } catch (ParseException PE) {
+            Log.e("DateAndTimeUtils", PE.getMessage());
+        }
+        return inputDate;
     }
 
 
